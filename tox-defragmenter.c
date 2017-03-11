@@ -255,8 +255,7 @@ static int isFriendOnline(Tox *tox, uint32_t friend_number) {
 }
 
 static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
-                                        size_t length, TOX_ERR_FRIEND_SEND_MESSAGE *error)
-{
+                                        size_t length, TOX_ERR_FRIEND_SEND_MESSAGE *error) {
   if (length <= TOX_MAX_MESSAGE_LENGTH) {
     LOG("SEND: MY(friend_send_message): passing through the outgoing message length=%d for friend_number=%d\n", (unsigned)length, friend_number)
     return TOX(friend_send_message)(tox, friend_number, type, message, length, error);
@@ -267,8 +266,7 @@ static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_ME
 }
 
 static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
-                                             size_t length, TOX_ERR_FRIEND_SEND_MESSAGE *error)
-{
+                                             size_t length, TOX_ERR_FRIEND_SEND_MESSAGE *error) {
   msg_outbound *msg = splitMessage(message, length, TOX_MAX_MESSAGE_LENGTH, getCurrTimeMs());
   msg->friend_number = friend_number;
   for (unsigned i = 0; i < msg->numParts; i++) {
@@ -593,8 +591,7 @@ static void messageReady(void *tox_opaque,
 }
 
 static void processInFragment(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
-                              size_t length, void *user_data)
-{
+                              size_t length, void *user_data) {
   uint64_t id;
   unsigned partNo, numParts, off, sz;
   uint8_t markerSize = markerParse(message, length,

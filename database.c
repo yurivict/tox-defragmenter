@@ -118,8 +118,7 @@ void dbInsertInboundFragment(void *tox_opaque,
                              const uint8_t *data, size_t length,
                              uint64_t tm,
                              DbMsgReadyCb msgReadyCb,
-                             void *user_data)
-{
+                             void *user_data) {
   // Try inserting records while some other fragment can also be inserting it.
   // In case fragmented_meta exists but fragmented_data doesn't, this message is already finished
   // and fragments are considered duplicates and are ignored.

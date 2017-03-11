@@ -46,8 +46,7 @@ uint8_t markerPrint(uint64_t id, unsigned partNo, unsigned numParts, unsigned of
            markerChar[0], markerChar[1], markerChar[2]);
 }
 
-int markerExists(const uint8_t *message, size_t length)
-{
+int markerExists(const uint8_t *message, size_t length) {
   U fldOff[nInts] = {0};
   U fldSz[nInts] = {0};
 
@@ -56,8 +55,7 @@ int markerExists(const uint8_t *message, size_t length)
 
 uint8_t markerParse(const uint8_t *message, size_t length,
                     uint64_t *id,
-                    unsigned *partNo, unsigned *numParts, unsigned *off, unsigned *sz)
-{
+                    unsigned *partNo, unsigned *numParts, unsigned *off, unsigned *sz) {
   U fldOff[nInts] = {0};
   U fldSz[nInts] = {0};
 
