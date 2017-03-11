@@ -10,5 +10,5 @@ tox-defragmenter is between the Tox client and the Tox library. When it sees a l
 # API
 tox-defragmenter API requires two intialization functions to be called: tox_defragmenter_initialize_api and tox_defragmenter_initialize_db before it can be used. It also requires the function tox_defragmenter_periodic to be called every few seconds, and the function tox_defragmenter_uninitialize be called in the end.
 
-# CAVEATS
+# Caveats
 Due to the SQLite blob bug discovered during the development process, tox-defragmenter has to open and close db blobs for each fragment, which causes the performance impact on the receiving end. Until this SQLite bug is fixed, only moderately long messages can be sent.
