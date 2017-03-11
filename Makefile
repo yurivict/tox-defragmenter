@@ -3,8 +3,7 @@ SRCS=		tox-defragmenter.c database.c marker.c
 HEADERS=	tox-defragmenter.h database.h marker.h
 DEFRAG_LIB=	libtox-defragmenter.so
 
-#CFLAGS?=	-I/usr/local/include -O3 -fPIC
-CFLAGS?=	-I/usr/local/include -g -fPIC
+CFLAGS?=	-I/usr/local/include -O3 -fPIC
 LDFLAGS?=	-L/usr/local/lib
 LDFLAGS+=	-lsqlcipher
 VERS_SCRIPT=	tox-defragmenter.version
