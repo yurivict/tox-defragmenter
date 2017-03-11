@@ -641,6 +641,7 @@ void MY(uninitialize)() {
   dbUninitialize();
   initializedApi = 0;
   initializedDb = 0;
+  base_toxcore_api = (ToxcoreApi){0};
 }
 
 void MY(periodic)(Tox *tox) {
