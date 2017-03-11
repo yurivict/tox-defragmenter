@@ -39,6 +39,9 @@ static tox_friend_message_cb *client_friend_message_cb = 0;
 #define FRAGMENTS_AT_A_TIME  512
 #define RECEIPT_EXPIRATION_TIME 20000 // 20 sec
 
+#define FID "%"PRIu64
+#define FTM "%"PRIu64
+
 //
 // structures
 //
@@ -299,7 +302,7 @@ static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, T
 }
 
 static void msgSendNextParts(Tox *tox, msg_outbound *msg) {
-  unsigned partNo = 0;
+  // original pass through the fragments
   for (unsigned i = msg->lastSent+1; i < msg->numParts; i++) {
     if (msg->numTransit < FRAGMENTS_AT_A_TIME) {
       if (msgSendPart(tox, msg, i))
@@ -308,6 +311,7 @@ static void msgSendNextParts(Tox *tox, msg_outbound *msg) {
       break;
     }
   }
+  // send fragments that failed before for some reason
   for (unsigned i = 0; i < msg->numParts; i++) {
     if (msg->numTransit < FRAGMENTS_AT_A_TIME &&
         msg->numTransit + msg->numConfirmed < msg->numParts) {
@@ -330,16 +334,16 @@ static void msgIsComplete(Tox *tox, msg_outbound *msg, void *user_data) {
 
 static int msgSendPart(Tox *tox, msg_outbound *msg, unsigned i) {
   uint32_t receipt = TOX(friend_send_message)(tox, msg->friend_number, msg->type, msg->fragments[i].data, msg->fragments[i].length, NULL);
-  if (receipt) {
-    msg->fragments[i].receipt = receipt;
-    msg->fragments[i].timesSent++;
-    addReceipt(receipt, msg, i+1, getCurrTimeMs());
-    msg->numTransit++;
-    LOG("SEND: msgSendPart: sent partNo=%u length=%u of msg=%p part.timesSent=%u msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u\n",
-        i, (unsigned)msg->fragments[i].length, msg, msg->fragments[i].timesSent, msg->numTransit, msg->numConfirmed, msg->numParts)
-    return 1;
-  }
-  return 0;
+  if (!receipt)
+    return 0;
+  msg->fragments[i].receipt = receipt;
+  msg->fragments[i].timesSent++;
+  addReceipt(receipt, msg, i+1, getCurrTimeMs());
+  msg->numTransit++;
+  LOG("SEND: msgSendPart: sent partNo=%u of msg=%p id="FID" length=%u of msg=%p part.timesSent=%u msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u\n",
+      i, msg, msg->id,
+      (unsigned)msg->fragments[i].length, msg, msg->fragments[i].timesSent, msg->numTransit, msg->numConfirmed, msg->numParts)
+  return 1;
 }
 
 static msg_outbound* splitMessage(const uint8_t *message, size_t length, size_t maxLength, uint64_t id) {
@@ -453,12 +457,12 @@ static void sendMore(Tox *tox) {
     return;
   msg_outbound *msg = msgsOutbound;
   do {
-    LOG("sendMore: trying to send more of the message id=%"PRIu64", numParts=%u numTransit=%u numConfirmed=%u\n",
-      msg->id, msg->numParts, msg->numTransit, msg->numConfirmed)
+    LOG("sendMore: trying to send more of the message msg=%p id="FID", numParts=%u numTransit=%u numConfirmed=%u\n",
+      msg, msg->id, msg->numParts, msg->numTransit, msg->numConfirmed)
     if (isFriendOnline(tox, msg->friend_number)) {
       msgSendNextParts(tox, msg);
     } else {
-      LOG("SEND: sendMore: skipping msg=%p id=%"PRIu64" numParts=%u numConfirmed=%u for friend=%u because this friend isn't online\n",
+      LOG("SEND: sendMore: skipping msg=%p id="FID" numParts=%u numConfirmed=%u for friend=%u because this friend isn't online\n",
         msg, msg->id, msg->numParts, msg->numConfirmed, msg->friend_number)
     }
     msg = msg->next;
@@ -478,11 +482,12 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
                                    unsigned lengthMessage,
                                    const uint8_t *confirmed,
                                    unsigned lengthConfirmed, int receipt) {
-  LOG("SEND: loadPendingSentMessage: id=%"PRIu64" numConfirmed=%u numParts=%u\n", id, numConfirmed, numParts)
+  LOG("SEND: loadPendingSentMessage: friend=%u type=%d id="FID" length=%u numConfirmed=%u numParts=%u\n",
+    friend_number, type, id, lengthMessage, numConfirmed, numParts)
   msg_outbound *msg = splitMessage(message, lengthMessage, TOX_MAX_MESSAGE_LENGTH, id);
   if (msg->numParts != numParts || msg->numParts != lengthConfirmed) {
-    WARNING("mismatching number of parts of the pending outbound message for friend=%d id=%"PRIu64": expected %u, got %u parts and %u confirmations\n",
-      friend_number, id,
+    WARNING("mismatching number of parts of the pending outbound message for friend=%d msg=%p id="FID": expected %u, got %u parts and %u confirmations\n",
+      friend_number, msg, id,
       msg->numParts, numParts, lengthConfirmed)
     dbClearPending(friend_number, id);
     msgOutboundDelete(msg);
@@ -497,8 +502,8 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
     }
   }
   if (numConfirmed != msg->numConfirmed || numConfirmed > numParts) {
-    WARNING("mismatched or invalid confirmed count for friend=%d id=%"PRIu64": %u vs. %u\n",
-      friend_number, id, numConfirmed, msg->numConfirmed)
+    WARNING("mismatched or invalid confirmed count for friend=%d msg=%p id="FID": %u vs. %u\n",
+      friend_number, msg, id, numConfirmed, msg->numConfirmed)
     dbClearPending(friend_number, id);
     msgOutboundDelete(msg);
     return;
@@ -508,8 +513,8 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
     msg->fromDb = 1;
     msgsOutboundLink(msg);
   } else {
-    WARNING("all %u message parts are confirmed for friend=%d id=%"PRIu64", discarding the message\n",
-      numParts, friend_number, id)
+    WARNING("all %u message parts are confirmed for friend=%u msg=%p id="FID", discarding the message\n",
+      numParts, friend_number, msg, id)
     dbClearPending(friend_number, id);
     msgOutboundDelete(msg);
   }
@@ -537,18 +542,17 @@ int tryProcessReceipt(Tox *tox, uint32_t receipt, void *user_data) {
   free(f->data);
   f->data = NULL;
   dbOutboundPartConfirmed(msg->friend_number, msg->id, r->partNo, getCurrTimeMs());
-  LOG("SEND: tryProcessReceipt: found receipt=%u: msg=%p for friend_number=%d partNo=%u timeout=%"PRIu64" msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u\n",
+  LOG("SEND: tryProcessReceipt: found receipt=%u: msg=%p for friend_number=%d partNo=%u timeout="FTM" msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u\n",
       receipt, msg, msg->friend_number, r->partNo, r->timestamp, msg->numTransit, msg->numConfirmed, msg->numParts)
   if (r->msg->numConfirmed < r->msg->numParts)
     if (isFriendOnline(tox, msg->friend_number)) {
       msgSendNextParts(tox, msg);
     } else {
-      LOG("SEND: tryProcessReceipt: skipping msg=%p id=%"PRIu64" numParts=%u for friend=%u because this friend isn't online\n",
+      LOG("SEND: tryProcessReceipt: skipping msg=%p id="FID" numParts=%u for friend=%u because this friend isn't online\n",
         msg, msg->id, msg->numParts, msg->friend_number)
     }
   else
     msgIsComplete(tox, r->msg, user_data);
-  //
   // clear the receipt
   receipts[recIdx].receipt = 0;
   if (recIdx == receiptsLo) {
@@ -598,7 +602,8 @@ static void processInFragment(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE
                          &id,
                          &partNo, &numParts, &off, &sz);
 
-  LOG("RECV: processInFragment: id=%" PRIu64 " length=%u partNo=%u numParts=%u off=%u sz=%u\n", id, (unsigned)length, partNo, numParts, off, sz)
+  LOG("RECV: processInFragment: friend=%u id="FID" length=%u partNo=%u numParts=%u off=%u sz=%u\n",
+    friend_number, id, (unsigned)length, partNo, numParts, off, sz)
   dbInsertInboundFragment((void*)tox,
                           friend_number, type,
                           id, partNo, numParts, off, sz,
@@ -645,7 +650,7 @@ void MY(uninitialize)() {
 }
 
 void MY(periodic)(Tox *tox) {
-  //LOG("MY(periodic): tm=%"PRIu64" initializedApi=%d initializedDb=%d\n", getCurrTimeMs(), initializedApi, initializedDb)
+  //LOG("MY(periodic): tm="FTM" initializedApi=%d initializedDb=%d\n", getCurrTimeMs(), initializedApi, initializedDb)
   if (!initializedApi || !initializedDb)
     return;
   // send
