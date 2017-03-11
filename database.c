@@ -20,7 +20,6 @@ static sqlite3 *db = NULL;
 static DbLockCb dbLockCb = NULL;
 static DbUnlockCb dbUnlockCb = NULL;
 static void *dbLockUserData = NULL;
-static void *lockObj = NULL;
 #if defined(USE_BLOB_CACHE)
 #define USE_SQLITE_WORKAROUND // this workaround avoids rowid collisions, but doesn't help in the case of concurrently received messages
 static sqlite3_blob *blobCache = NULL;
@@ -41,8 +40,8 @@ static sqlite3_stmt *stmtDeleteFragmentedData = NULL;
 
 // internal declarations
 
-static void dbLock();
-static void dbUnlock();
+static void* dbLock();
+static void dbUnlock(void *lock);
 static void execSql(const char *sql);
 static void createSchema();
 static void readDbName(char *name);
@@ -108,7 +107,6 @@ void dbUninitialize() {
   dbLockCb = NULL;
   dbUnlockCb = NULL;
   dbLockUserData = NULL;
-  lockObj = NULL;
   memset(dbName, 0, sizeof(dbName));
 }
 
@@ -124,7 +122,7 @@ void dbInsertInboundFragment(void *tox_opaque,
   // and fragments are considered duplicates and are ignored.
 
   LOG("part#%u off=%u sz=%u len=%u data=-->%*s<--\n", partNo, off, sz, (unsigned)length, (unsigned)length, (const char*)data)
-  dbLock();
+  void *lock = dbLock();
   prepare(&stmtInsertFragmentedDataInbound,
     "INSERT INTO fragmented_data (friend_id, frags_id, message)"
     " SELECT ?, ?, zeroblob(?)"
@@ -142,7 +140,7 @@ void dbInsertInboundFragment(void *tox_opaque,
 
   uint64_t rowid = getFragmentsDataRowid(friend_number, id);
   if (!rowid) {
-    dbUnlock();
+    dbUnlock(lock);
     return; // record is ready, must be a late duplicate
   }
   int rc;
@@ -207,7 +205,7 @@ void dbInsertInboundFragment(void *tox_opaque,
   } else {
     resetStmt(stmtSelectFragmentedInboundDone);
   }
-  dbUnlock();
+  dbUnlock(lock);
 }
 
 void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64_t id,
@@ -215,7 +213,7 @@ void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64_t id,
                              unsigned numParts,
                              const uint8_t *data, size_t length,
                              uint32_t receipt) {
-  dbLock();
+  void *lock = dbLock();
   prepare(&stmtInsertFragmentedMetaOutbound,
     "INSERT INTO fragmented_meta (outbound, friend_id, type, frags_id, timestamp_first, timestamp_last,"
                                 " frags_done, frags_num)"
@@ -228,11 +226,11 @@ void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64_t id,
     " VALUES(?, ?, ?, zeroblob(?), ?);");
   bind_Int_Int64_Blob_Int_Int(stmtInsertFragmentedDataOutbound, friend_number, id, data, length, numParts, receipt);
   execPrepared(stmtInsertFragmentedDataOutbound);
-  dbUnlock();
+  dbUnlock(lock);
 }
 
 void dbOutboundPartConfirmed(uint32_t friend_number, uint64_t id, unsigned partNo, uint64_t tm) {
-  dbLock();
+  void *lock = dbLock();
   uint64_t rowid = getFragmentsDataRowid(friend_number, id);
   if (!rowid)
     abort();
@@ -242,11 +240,11 @@ void dbOutboundPartConfirmed(uint32_t friend_number, uint64_t id, unsigned partN
   writeBlob(confirmedBlob, &one, 1, partNo-1);
   closeBlob(confirmedBlob);
   updateFragmentedMetaDone(tm, friend_number, id);
-  dbUnlock();
+  dbUnlock(lock);
 }
 
 void dbLoadPendingSentMessages(DbMsgPendingSentCb msgPendingSentCb) {
-  dbLock();
+  void *lock = dbLock();
   prepare(&stmtSelectFragmentedOutboundPending,
     "SELECT friend_id, type, frags_id,"
           " timestamp_first, timestamp_last,"
@@ -273,13 +271,13 @@ void dbLoadPendingSentMessages(DbMsgPendingSentCb msgPendingSentCb) {
     );
   }
   resetStmt(stmtSelectFragmentedOutboundPending);
-  dbUnlock();
+  dbUnlock(lock);
 }
 
 void dbClearPending(uint32_t friend_number, uint64_t id) {
-  dbLock();
+  void *lock = dbLock();
   deleteDataRecord(friend_number, id);
-  dbUnlock();
+  dbUnlock(lock);
 }
 
 void dbPeriodic() {
@@ -287,14 +285,13 @@ void dbPeriodic() {
 
 // internal definitions
 
-static void dbLock() {
-  if (dbLockCb)
-    lockObj = dbLockCb(dbLockUserData);
+static void* dbLock() {
+  return dbLockCb ? dbLockCb(dbLockUserData) : NULL;
 }
 
-static void dbUnlock() {
-  if (dbUnlockCb)
-    dbUnlockCb(lockObj, dbLockUserData);
+static void dbUnlock(void *lock) {
+  if (lock)
+    dbUnlockCb(lock, dbLockUserData);
 }
 
 static void execSql(const char *sql) {
@@ -308,7 +305,7 @@ static void execSql(const char *sql) {
 }
 
 static void createSchema() {
-  dbLock();
+  void *lock = dbLock();
   execSql(
     "CREATE TABLE IF NOT EXISTS fragmented_meta ("
     " outbound INTEGER NOT NULL,"
@@ -332,7 +329,7 @@ static void createSchema() {
     "INSERT INTO sqlite_sequence VALUES('fragmented_data', 1000000000);"
 #endif
   );
-  dbUnlock();
+  dbUnlock(lock);
 }
 
 static void readDbName(char *name) {
