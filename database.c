@@ -58,15 +58,18 @@ static void bindInt64(sqlite3_stmt *stmt, int n, sqlite3_int64 a);
 static void bindBlob(sqlite3_stmt *stmt, int n, const uint8_t *data, size_t size);
 static void bind_Int_Int64(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2);
 static void bind_Int64_Int_Int64(sqlite3_stmt *stmt, sqlite3_int64 a1, int a2, sqlite3_int64 a3);
-static void bind_Int_Int64_Blob_Int_Int(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2, const uint8_t *a3data, size_t a3size,
+static void bind_Int_Int64_Blob_Int_Int(sqlite3_stmt *stmt,
+                                        int a1, sqlite3_int64 a2, const uint8_t *a3data, size_t a3size,
                                         int a4, int a5);
-static void bind_Int_Int64_Int64_Int_Int64(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2, sqlite3_int64 a3, int a4, sqlite3_int64 a5);
+static void bind_Int_Int64_Int64_Int_Int64(sqlite3_stmt *stmt,
+                                           int a1, sqlite3_int64 a2, sqlite3_int64 a3, int a4,
+                                           sqlite3_int64 a5);
 static void bind_Int_Int_Int64_Int64_Int64_Int(sqlite3_stmt *stmt,
-                                               int a1, int a2, sqlite3_int64 a3, sqlite3_int64 a4, sqlite3_int64 a5,
-                                               int a6);
+                                               int a1, int a2, sqlite3_int64 a3, sqlite3_int64 a4,
+                                               sqlite3_int64 a5, int a6);
 static void bind_Int_Int_Int64_Int64_Int64_Int_Int_Int64(sqlite3_stmt *stmt,
-                                                         int a1, int a2, sqlite3_int64 a3, sqlite3_int64 a4, sqlite3_int64 a5,
-                                                         int a6, int a7, sqlite3_int64 a8);
+                                                         int a1, int a2, sqlite3_int64 a3, sqlite3_int64 a4,
+                                                         sqlite3_int64 a5, int a6, int a7, sqlite3_int64 a8);
 static void execPrepared(sqlite3_stmt *stmt);
 static int execPreparedRowOrNot(sqlite3_stmt *stmt);
 static int execPreparedInt64(sqlite3_stmt *stmt, int iCol, int64_t *value);
@@ -101,8 +104,12 @@ void dbUninitialize() {
     blobCacheCloseBlob();
 #endif
   destroyPreparedStatements();
-  memset(dbName, 0, sizeof(dbName));
   db = NULL;
+  dbLockCb = NULL;
+  dbUnlockCb = NULL;
+  dbLockUserData = NULL;
+  lockObj = NULL;
+  memset(dbName, 0, sizeof(dbName));
 }
 
 void dbInsertInboundFragment(void *tox_opaque,
@@ -428,7 +435,8 @@ static void bind_Int64_Int_Int64(sqlite3_stmt *stmt, sqlite3_int64 a1, int a2, s
   bindInt64(stmt, 3, a3);
 }
 
-static void bind_Int_Int64_Blob_Int_Int(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2, const uint8_t *a3data, size_t a3size,
+static void bind_Int_Int64_Blob_Int_Int(sqlite3_stmt *stmt,
+                                        int a1, sqlite3_int64 a2, const uint8_t *a3data, size_t a3size,
                                         int a4, int a5) {
   bindInt  (stmt, 1, a1);
   bindInt64(stmt, 2, a2);
@@ -437,7 +445,9 @@ static void bind_Int_Int64_Blob_Int_Int(sqlite3_stmt *stmt, int a1, sqlite3_int6
   bindInt  (stmt, 5, a5);
 }
 
-static void bind_Int_Int64_Int64_Int_Int64(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2, sqlite3_int64 a3, int a4, sqlite3_int64 a5) {
+static void bind_Int_Int64_Int64_Int_Int64(sqlite3_stmt *stmt,
+                                           int a1, sqlite3_int64 a2, sqlite3_int64 a3, int a4,
+                                           sqlite3_int64 a5) {
   bindInt  (stmt, 1, a1);
   bindInt64(stmt, 2, a2);
   bindInt64(stmt, 3, a3);
@@ -446,8 +456,8 @@ static void bind_Int_Int64_Int64_Int_Int64(sqlite3_stmt *stmt, int a1, sqlite3_i
 }
 
 static void bind_Int_Int_Int64_Int64_Int64_Int(sqlite3_stmt *stmt,
-                                               int a1, int a2, sqlite3_int64 a3, sqlite3_int64 a4, sqlite3_int64 a5,
-                                               int a6) {
+                                               int a1, int a2, sqlite3_int64 a3, sqlite3_int64 a4,
+                                               sqlite3_int64 a5, int a6) {
   bindInt  (stmt, 1, a1);
   bindInt  (stmt, 2, a2);
   bindInt64(stmt, 3, a3);
@@ -457,8 +467,8 @@ static void bind_Int_Int_Int64_Int64_Int64_Int(sqlite3_stmt *stmt,
 }
 
 static void bind_Int_Int_Int64_Int64_Int64_Int_Int_Int64(sqlite3_stmt *stmt,
-                                                         int a1, int a2, sqlite3_int64 a3, sqlite3_int64 a4, sqlite3_int64 a5,
-                                                         int a6, int a7, sqlite3_int64 a8) {
+                                                         int a1, int a2, sqlite3_int64 a3, sqlite3_int64 a4,
+                                                         sqlite3_int64 a5, int a6, int a7, sqlite3_int64 a8) {
   bindInt  (stmt, 1, a1);
   bindInt  (stmt, 2, a2);
   bindInt64(stmt, 3, a3);
