@@ -129,7 +129,7 @@ static void MY(friend_message_cb)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_
                                   size_t length, void *user_data);
 static void messageReady(void *tox_opaque,
                          uint64_t tm1, uint64_t tm2,
-                         int friend_number, int type, const uint8_t *message, size_t length, void *user_data);
+                         uint32_t friend_number, int type, const uint8_t *message, size_t length, void *user_data);
 static void processInFragment(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
                               size_t length, void *user_data);
 
@@ -587,7 +587,7 @@ static void MY(friend_message_cb)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_
 
 static void messageReady(void *tox_opaque,
                          uint64_t tm1, uint64_t tm2,
-                         int friend_number, int type, const uint8_t *message, size_t length, void *user_data) {
+                         uint32_t friend_number, int type, const uint8_t *message, size_t length, void *user_data) {
   LOG("RECV: messageReady: forwarding the message of length=%u to the client\n", (unsigned)length)
   CLIENT(friend_message_cb)((Tox*)tox_opaque, friend_number, (TOX_MESSAGE_TYPE)type, message, length, user_data);
 }

@@ -64,11 +64,11 @@ uint8_t markerParse(const uint8_t *message, size_t length,
   if (!markerParseFields(message, length, fldOff, fldSz))
     return 0; // not a marker
 
-  *id                  = parseUInt64(message, szMarkerChar);
-  *partNo              = parseUInt32(message, fldOff[0]);
-  *numParts            = parseUInt32(message, fldOff[1]);
-  *off                 = parseUInt32(message, fldOff[2]);
-  *sz                  = parseUInt32(message, fldOff[3]);
+  *id          = parseUInt64(message, szMarkerChar);
+  *partNo      = parseUInt32(message, fldOff[0]);
+  *numParts    = parseUInt32(message, fldOff[1]);
+  *off         = parseUInt32(message, fldOff[2]);
+  *sz          = parseUInt32(message, fldOff[3]);
 
   return fldOff[3] + fldSz[3] + szMarkerChar;
 }

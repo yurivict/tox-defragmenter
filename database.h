@@ -10,7 +10,7 @@
 // callbacks
 typedef void* (*DbLockCb)(void *user_data);
 typedef void (*DbUnlockCb)(void*, void *user_data);
-typedef void (*DbMsgReadyCb)(void *tox_opaque, uint64_t tm1, uint64_t tm2, int friend_number, int type, const uint8_t *message, size_t length, void *user_data);
+typedef void (*DbMsgReadyCb)(void *tox_opaque, uint64_t tm1, uint64_t tm2, uint32_t friend_number, int type, const uint8_t *message, size_t length, void *user_data);
 typedef void (*DbMsgPendingSentCb)(uint32_t friend_number, int type, uint64_t id,
                                    uint64_t tm1,
                                    uint64_t tm2,
