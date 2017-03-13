@@ -296,6 +296,8 @@ static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, T
     return msg->receipt;
   } else {
     // failure to send all attempted parts translates into inability to send the whole message
+    LOG("SEND: MY(friend_send_message_long): failed to send the message of length=%u msg.numParts=%u, returning receipt 0 to the client\n",
+      (unsigned)length, msg->numParts)
     msgOutboundDelete(msg);
     return 0;
   }
