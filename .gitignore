@@ -1,1 +1,3 @@
 libtox-defragmenter.so
+libtox-defragmenter.a
+*.o
