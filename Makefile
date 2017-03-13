@@ -18,3 +18,6 @@ install:
 	mkdir -p $(DESTDIR)/include $(DESTDIR)/lib
 	cp tox-defragmenter.h $(DESTDIR)/include/tox-defragmenter.h
 	cp $(DEFRAG_LIB) $(DESTDIR)/lib/$(DEFRAG_LIB)
+
+clean:
+	rm -f $(DEFRAG_LIB)
