@@ -14,7 +14,7 @@
 // macros
 #define CK_ERROR(stmt...) \
   (SQLITE_OK != (rc = stmt))
-#define LOG(fmt...) printf("Defragmenter: DB: " fmt);
+#define LOG(fmt...) //printf("Defragmenter: DB: " fmt);
 
 // database objects
 static sqlite3 *db = NULL;
