@@ -12,6 +12,8 @@ CFLAGS+=	-I$(TOX_HEADERS)
 CFLAGS+=	-fPIC
 CFLAGS+=	$(CFLAGS_OPT)
 
+all: build
+
 build: $(DEFRAG_LIB_SO) $(DEFRAG_LIB_A)
 
 $(DEFRAG_LIB_SO): $(DEFRAG_ALL_O)
