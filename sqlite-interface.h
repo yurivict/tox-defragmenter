@@ -57,6 +57,7 @@ int sqlite3_blob_open(
   sqlite3_blob **ppBlob
 );
 const char *sqlite3_sql(sqlite3_stmt *pStmt);
+const char *sqlite3_errstr(int);
 
 int sqlite3_blob_read(sqlite3_blob *, void *Z, int N, int iOffset);
 int sqlite3_blob_write(sqlite3_blob *, const void *z, int n, int iOffset);

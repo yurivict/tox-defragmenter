@@ -545,12 +545,12 @@ static void resetStmt(sqlite3_stmt *stmt) {
 }
 
 static void err(int rc, const char *op) {
-  fprintf(stderr, "Error while %s: error=%d\n", op, rc);
+  fprintf(stderr, "Error while %s: error=%s (%d)\n", op, sqlite3_errstr(rc), rc);
   abort();
 }
 
 static void errSql(int rc, const char *op, const char *sql) {
-  fprintf(stderr, "Error while %s: sql=%s error=%d\n", op, sql, rc);
+  fprintf(stderr, "Error while %s: sql=%s error=%s (%d)\n", op, sql, sqlite3_errstr(rc), rc);
   abort();
 }
 
