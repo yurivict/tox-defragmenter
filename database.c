@@ -159,7 +159,6 @@ FUNC_LOCAL void dbInsertInboundFragment(void *tox_opaque,
     dbUnlock(lock);
     return; // record is ready, must be a late duplicate
   }
-  int rc;
   // write blob
 #if defined(USE_BLOB_CACHE)
   if (!blobCache || rowid != blobCacheRowid) {
@@ -250,7 +249,6 @@ FUNC_LOCAL void dbOutboundPartConfirmed(uint32_t friend_number, uint64_t id, uns
   uint64_t rowid = getFragmentsDataRowid(friend_number, id);
   if (!rowid)
     abort();
-  int rc;
   uint8_t one = 1;
   sqlite3_blob *confirmedBlob = openBlob("fragmented_data", "confirmed", rowid);
   writeBlob(confirmedBlob, &one, 1, partNo-1);

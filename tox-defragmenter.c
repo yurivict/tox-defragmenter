@@ -123,7 +123,6 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
                                    const uint8_t *confirmed,
                                    unsigned lengthConfirmed,
                                    int receipt);
-static void msgSendMore(Tox *tox, msg_outbound *msg);
 static void MY(friend_read_receipt_cb)(Tox *tox, uint32_t friend_number, uint32_t message_id, void *user_data);
 static int tryProcessReceipt(Tox *tox, uint32_t receipt, void *user_data);
 static int isFragment(const uint8_t *message, size_t length);
@@ -431,7 +430,7 @@ static int findReceipt(uint32_t receipt) {
   return receipts[i1].receipt < receipt ? i2 : i1;
 }
 
-void compressReceipts() {
+static void compressReceipts() {
   receipt_record *r = NEWA(receipt_record, receiptsNum*2);
   receipt_record *r1 = r;
   for (int i = receiptsLo; i < receiptsHi; i++) {

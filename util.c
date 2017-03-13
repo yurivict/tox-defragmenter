@@ -8,7 +8,6 @@
 static struct timeval tmInitialized = {0};
 
 FUNC_LOCAL void utilInitialize() {
-  struct timeval tm;
   gettimeofday(&tmInitialized, NULL);
 }
 
