@@ -99,10 +99,8 @@ void dbInitialize(sqlite3 *new_db, DbLockCb lockCb, DbUnlockCb unlockCb, void *u
 
 void dbInitializeInMemory() {
   int rc;
-  if (CK_ERROR(sqlite3_open(":memory:", &db))) {
-    fprintf(stderr, "Error while creating the in-memory database, error=%d\n", rc);
-    abort();
-  }
+  if (CK_ERROR(sqlite3_open(":memory:", &db)))
+    err(rc, "creating the in-memory database");
   dbInMemory = 1;
   initDb();
 }
@@ -115,10 +113,8 @@ void dbUninitialize() {
   destroyPreparedStatements();
   if (dbInMemory) {
     int rc;
-    if (CK_ERROR(sqlite3_close(db))) {
-      fprintf(stderr, "Error while closing the in-memory database, error=%d\n", rc);
-      abort();
-    }
+    if (CK_ERROR(sqlite3_close(db)))
+      err(rc, "closing the in-memory database");
     dbInMemory = 0;
   }
   db = NULL;
@@ -323,10 +319,8 @@ static void execSql(const char *sql) {
   int rc;
   char *exec_errmsg;
   LOG("execSql: sql=%s\n", sql)
-  if (CK_ERROR(sqlite3_exec(db, sql, NULL, NULL, &exec_errmsg))) {
-    fprintf(stderr, "Error while executing sql=%s error=%d\n", sql, rc);
-    abort();
-  }
+  if (CK_ERROR(sqlite3_exec(db, sql, NULL, NULL, &exec_errmsg)))
+    errSql(rc, "executing sql", sql);
 }
 
 static void createSchema() {
