@@ -8,9 +8,9 @@ DEFRAG_ALL_O=	tox-defragmenter-all.o
 
 TOX_HEADERS?=   /usr/local/include
 CFLAGS_OPT?=	-O3
+CFLAGS+=	$(CFLAGS_OPT)
 CFLAGS+=	-I$(TOX_HEADERS)
 CFLAGS+=	-fPIC
-CFLAGS+=	$(CFLAGS_OPT)
 CFLAGS+=	-Wall
 
 all: build
