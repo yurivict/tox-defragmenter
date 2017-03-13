@@ -649,7 +649,7 @@ ToxcoreApi MY(initialize_api)(const ToxcoreApi *api) {
   return MY(toxcore_api);
 }
 
-void MY(initialize_db)(sqlite3* db, ToxDefragmenterDbLockCb lockCb, ToxDefragmenterDbUnlockCb unlockCb, void *user_data) {
+void MY(initialize_db)(sqlite3 *db, ToxDefragmenterDbLockCb lockCb, ToxDefragmenterDbUnlockCb unlockCb, void *user_data) {
   utilInitialize();
   LOG("INIT", "initialize")
   dbInitialize(db, lockCb, unlockCb, user_data);
