@@ -1,4 +1,8 @@
 FOO {
-  global: tox_defragmenter_initialize_api; tox_defragmenter_initialize_db; tox_defragmenter_uninitialize; tox_defragmenter_periodic;
+  global: tox_defragmenter_initialize_api;
+          tox_defragmenter_initialize_db;
+          tox_defragmenter_initialize_db_inmemory;
+          tox_defragmenter_uninitialize;
+          tox_defragmenter_periodic;
   local: *;
 };

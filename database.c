@@ -21,6 +21,7 @@ static sqlite3 *db = NULL;
 static DbLockCb dbLockCb = NULL;
 static DbUnlockCb dbUnlockCb = NULL;
 static void *dbLockUserData = NULL;
+static uint8_t dbInMemory = 0;
 #if defined(USE_BLOB_CACHE)
 #define USE_SQLITE_WORKAROUND // this workaround avoids rowid collisions, but doesn't help in the case of concurrently received messages
 static sqlite3_blob *blobCache = NULL;
@@ -43,6 +44,7 @@ static sqlite3_stmt *stmtDeleteFragmentedData = NULL;
 
 static void* dbLock();
 static void dbUnlock(void *lock);
+static void initDb();
 static void execSql(const char *sql);
 static void createSchema();
 static void readDbName(char *name);
@@ -92,12 +94,17 @@ void dbInitialize(sqlite3 *new_db, DbLockCb lockCb, DbUnlockCb unlockCb, void *u
   dbLockCb = lockCb;
   dbUnlockCb = unlockCb;
   dbLockUserData = user_data;
-  if (db) {
-    void *lock = dbLock();
-    createSchema();
-    readDbName(dbName);
-    dbUnlock(lock);
+  initDb();
+}
+
+void dbInitializeInMemory() {
+  int rc;
+  if (CK_ERROR(sqlite3_open(":memory:", &db))) {
+    fprintf(stderr, "Error while creating the in-memory database, error=%d\n", rc);
+    abort();
   }
+  dbInMemory = 1;
+  initDb();
 }
 
 void dbUninitialize() {
@@ -106,6 +113,14 @@ void dbUninitialize() {
     blobCacheCloseBlob();
 #endif
   destroyPreparedStatements();
+  if (dbInMemory) {
+    int rc;
+    if (CK_ERROR(sqlite3_close(db))) {
+      fprintf(stderr, "Error while closing the in-memory database, error=%d\n", rc);
+      abort();
+    }
+    dbInMemory = 0;
+  }
   db = NULL;
   dbLockCb = NULL;
   dbUnlockCb = NULL;
@@ -295,6 +310,13 @@ static void* dbLock() {
 static void dbUnlock(void *lock) {
   if (lock)
     dbUnlockCb(lock, dbLockUserData);
+}
+
+static void initDb() {
+  void *lock = dbLock();
+  createSchema();
+  readDbName(dbName);
+  dbUnlock(lock);
 }
 
 static void execSql(const char *sql) {

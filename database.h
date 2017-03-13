@@ -22,6 +22,7 @@ typedef void (*DbMsgPendingSentCb)(uint32_t friend_number, int type, uint64_t id
 
 // interface
 void dbInitialize(sqlite3 *new_db, DbLockCb lockCb, DbUnlockCb unlockCb, void *user_data);
+void dbInitializeInMemory();
 void dbUninitialize();
 void dbInsertInboundFragment(void *tox_opaque,
                              uint32_t friend_number, int type, uint64_t id,

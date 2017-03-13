@@ -13,6 +13,11 @@ typedef unsigned long long int sqlite_uint64;
 typedef sqlite_uint64 sqlite3_uint64;
 typedef struct sqlite3_blob sqlite3_blob;
 
+int sqlite3_open(
+  const char *filename,   /* Database filename (UTF-8) */
+  sqlite3 **ppDb          /* OUT: SQLite db handle */
+);
+int sqlite3_close(sqlite3*);
 int sqlite3_prepare_v2(
   sqlite3 *db,            /* Database handle */
   const char *zSql,       /* SQL statement, UTF-8 encoded */
