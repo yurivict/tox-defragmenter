@@ -21,13 +21,13 @@ $(DEFRAG_LIB_SO): $(DEFRAG_ALL_O)
 	$(CC) -shared -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 $(DEFRAG_LIB_A): $(DEFRAG_ALL_O)
-	rm -f $@ && \
+	rm -f $@
 	ar rcs $@ $<
 
 $(DEFRAG_ALL_O): $(SRCS)
-	$(CC) -c $(SRCS) $(CFLAGS) && \
-	ld $(OBJS) -Ur $(CFLAGS_OPT) -o $@.ld.o && \
-	objcopy --localize-hidden $@.ld.o $@ && \
+	$(CC) -c $(SRCS) $(CFLAGS)
+	ld $(OBJS) -Ur $(CFLAGS_OPT) -o $@.ld.o
+	objcopy --localize-hidden $@.ld.o $@
 	rm $@.ld.o
 
 $(DEFRAG_ALL_O): $(HEADERS) Makefile
