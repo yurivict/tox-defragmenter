@@ -32,9 +32,9 @@ $(DEFRAG_ALL_O): $(SRCS)
 $(DEFRAG_ALL_O): $(HEADERS) Makefile
 
 install:
-	mkdir -p $(DESTDIR)/include $(DESTDIR)/lib
-	cp tox-defragmenter.h $(DESTDIR)/include/tox-defragmenter.h
-	cp $(DEFRAG_LIB_SO) $(DEFRAG_LIB_A) $(DESTDIR)/lib/
+	mkdir -p $(DESTDIR)/$(PREFIX)/include $(DESTDIR)/$(PREFIX)/lib
+	cp tox-defragmenter.h $(DESTDIR)/$(PREFIX)/include/tox-defragmenter.h
+	cp $(DEFRAG_LIB_SO) $(DEFRAG_LIB_A) $(DESTDIR)/$(PREFIX)/lib/
 
 clean:
 	rm -f $(OBJS) $(DEFRAG_ALL_O) $(DEFRAG_LIB_SO) $(DEFRAG_LIB_A)
