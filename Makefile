@@ -1,6 +1,6 @@
 
 SRCS=		tox-defragmenter.c database.c marker.c util.c
-HEADERS=	tox-defragmenter.h database.h marker.h util.h sqlite-interface.h
+HEADERS=	tox-defragmenter.h database.h marker.h util.h common.h sqlite-interface.h
 OBJS=		$(SRCS:.c=.o)
 DEFRAG_LIB_SO=	libtox-defragmenter.so
 DEFRAG_LIB_A=	libtox-defragmenter.a
