@@ -1,7 +1,7 @@
 
 //
 // Subset of sqlite interface that tox-defragmenter depends on.
-// The caller is expected to depend or pre-load SQLite or sqlcipher
+// The caller is expected to depend on or pre-load SQLite or sqlcipher
 // to satisfy this interface.
 //
 
