@@ -15,7 +15,7 @@
 // macros
 #define CK_ERROR(stmt...) \
   (SQLITE_OK != (rc = stmt))
-#define LOG(fmt...) //utilLog("Db", fmt);
+#define LOG(fmt...) //utilLog(__FUNCTION__, "Db", fmt);
 
 // database objects
 static sqlite3 *db = NULL;
