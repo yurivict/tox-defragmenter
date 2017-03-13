@@ -93,8 +93,10 @@ void dbInitialize(sqlite3 *new_db, DbLockCb lockCb, DbUnlockCb unlockCb, void *u
   dbUnlockCb = unlockCb;
   dbLockUserData = user_data;
   if (db) {
+    void *lock = dbLock();
     createSchema();
     readDbName(dbName);
+    dbUnlock(lock);
   }
 }
 
