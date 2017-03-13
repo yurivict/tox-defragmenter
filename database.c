@@ -309,10 +309,8 @@ static void dbUnlock(void *lock) {
 }
 
 static void initDb() {
-  void *lock = dbLock();
   createSchema();
   readDbName(dbName);
-  dbUnlock(lock);
 }
 
 static void execSql(const char *sql) {
