@@ -651,6 +651,7 @@ void MY(initialize_db)(sqlite3* db, ToxDefragmenterDbLockCb lockCb, ToxDefragmen
 }
 
 void MY(uninitialize)() {
+  LOG("INIT: MY(uninitialize)\n")
   uninitialize();
   dbUninitialize();
   initializedApi = 0;
