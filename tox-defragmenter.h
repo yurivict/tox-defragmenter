@@ -6,7 +6,7 @@
 //
 
 #include <tox/tox.h>
-#include <sqlcipher/sqlite3.h>
+typedef struct sqlite3 sqlite3;
 
 #ifdef __cplusplus
 extern "C" {

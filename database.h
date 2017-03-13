@@ -2,10 +2,8 @@
 // Copyright © 2017 by Yuri Victorovich. All rights reserved.
 //
 
-#include <sqlcipher/sqlite3.h>
 #include <stdint.h>
 #include <stddef.h>
-
 
 // callbacks
 typedef void* (*DbLockCb)(void *user_data);

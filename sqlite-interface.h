@@ -1,4 +1,10 @@
 
+//
+// Subset of sqlite interface that tox-defragmenter depends on.
+// The caller is expected to depend or pre-load SQLite or sqlcipher
+// to satisfy this interface.
+//
+
 typedef struct sqlite3 sqlite3;
 typedef struct sqlite3_stmt sqlite3_stmt;
 typedef long long int sqlite_int64;
