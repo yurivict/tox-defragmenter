@@ -10,7 +10,7 @@ tox-defragmenter is between the Tox client and the Tox library. When it sees the
 # API
 tox-defragmenter API requires two intialization functions to be called: tox_defragmenter_initialize_api and tox_defragmenter_initialize_db before it can be used. It also requires the function tox_defragmenter_periodic to be called every few seconds, and the function tox_defragmenter_uninitialize to be called in the end.
 
-For clients that don't use SQLite or sqlcipher tox-defragmenter can create in-memory database. This will lose the ability to send long messages persistently across sessions, and client restart on any end will require to re-send all messages. In-memory database should be initialized with tox_defragmenter_initialize_db_inmemory.
+For clients that don't use SQLite or sqlcipher tox-defragmenter can create in-memory databases. This will lose the ability to send long messages persistently across sessions, and client restart on any end will require to re-send all unfinished messages. In-memory database should be initialized with tox_defragmenter_initialize_db_inmemory.
 
 # Dependencies
 * Build-time dependency on the tox library.
