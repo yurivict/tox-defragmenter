@@ -2,13 +2,14 @@
 // Copyright © 2017 by Yuri Victorovich. All rights reserved.
 //
 
+#include "common.h"
+#include "marker.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <inttypes.h>
-#include "marker.h"
 
 static const uint8_t markerChar[3] = {0xe2, 0x80, 0x8b}; // ZERO WIDTH SPACE' (U+200B), 3 bytes in UTF8 representation
 // frag_id is always 13 digits long, milliseconds timestamp
@@ -27,13 +28,13 @@ static int markerParseFields(const uint8_t *message, size_t length, U* fldOff, U
 
 // functions
 
-uint8_t markerMaxSizeBytes(unsigned numParts, unsigned msgSize) {
+FUNC_LOCAL uint8_t markerMaxSizeBytes(unsigned numParts, unsigned msgSize) {
   int numPartsDigits = numDigits(numParts);
   int msgSizeDigits = numDigits(msgSize);
   return szMarkerChar+szTm+1+numPartsDigits+1+numPartsDigits+1+msgSizeDigits+1+msgSizeDigits+szMarkerChar;
 }
 
-uint8_t markerPrint(uint64_t id, unsigned partNo, unsigned numParts, unsigned off, unsigned sz, uint8_t *marker) {
+FUNC_LOCAL uint8_t markerPrint(uint64_t id, unsigned partNo, unsigned numParts, unsigned off, unsigned sz, uint8_t *marker) {
   return sprintf((char*)marker, "%c%c%c%"PRIu64"|%u|%u|%u|%u%c%c%c",
                  markerChar[0], markerChar[1], markerChar[2],
                  id,
@@ -44,14 +45,14 @@ uint8_t markerPrint(uint64_t id, unsigned partNo, unsigned numParts, unsigned of
                  markerChar[0], markerChar[1], markerChar[2]);
 }
 
-int markerExists(const uint8_t *message, size_t length) {
+FUNC_LOCAL int markerExists(const uint8_t *message, size_t length) {
   U fldOff[nInts] = {0};
   U fldSz[nInts] = {0};
 
   return markerParseFields(message, length, fldOff, fldSz);
 }
 
-uint8_t markerParse(const uint8_t *message, size_t length,
+FUNC_LOCAL uint8_t markerParse(const uint8_t *message, size_t length,
                     uint64_t *id,
                     unsigned *partNo, unsigned *numParts, unsigned *off, unsigned *sz) {
   U fldOff[nInts] = {0};

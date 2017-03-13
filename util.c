@@ -1,21 +1,22 @@
 
+#include "common.h"
 #include "util.h"
 #include <stdio.h>
 #include <sys/time.h>
 #include <stdarg.h>
 
-struct timeval tmInitialized = {0};
+static struct timeval tmInitialized = {0};
 
-void utilInitialize() {
+FUNC_LOCAL void utilInitialize() {
   struct timeval tm;
   gettimeofday(&tmInitialized, NULL);
 }
 
-void utilUninitialize() {
+FUNC_LOCAL void utilUninitialize() {
   tmInitialized = (struct timeval){0, 0};
 }
 
-void utilLog(const char *function, const char *section, const char *fmt, ...) {
+FUNC_LOCAL void utilLog(const char *function, const char *section, const char *fmt, ...) {
   char msg[4*1024], *p = msg;
   va_list vl;
   struct timeval tm;

@@ -2,6 +2,7 @@
 // Copyright © 2017 by Yuri Victorovich. All rights reserved.
 //
 
+#include "common.h"
 #include "sqlite-interface.h"
 #include "database.h"
 #include "util.h"
@@ -90,7 +91,7 @@ static void blobCacheCloseBlob();
 
 // functions
 
-void dbInitialize(sqlite3 *new_db, DbLockCb lockCb, DbUnlockCb unlockCb, void *user_data) {
+FUNC_LOCAL void dbInitialize(sqlite3 *new_db, DbLockCb lockCb, DbUnlockCb unlockCb, void *user_data) {
   db = new_db;
   dbLockCb = lockCb;
   dbUnlockCb = unlockCb;
@@ -98,7 +99,7 @@ void dbInitialize(sqlite3 *new_db, DbLockCb lockCb, DbUnlockCb unlockCb, void *u
   initDb();
 }
 
-void dbInitializeInMemory() {
+FUNC_LOCAL void dbInitializeInMemory() {
   int rc;
   if (CK_ERROR(sqlite3_open(":memory:", &db)))
     err(rc, "creating the in-memory database");
@@ -106,7 +107,7 @@ void dbInitializeInMemory() {
   initDb();
 }
 
-void dbUninitialize() {
+FUNC_LOCAL void dbUninitialize() {
 #if defined(USE_BLOB_CACHE)
   if (blobCache)
     blobCacheCloseBlob();
@@ -125,7 +126,7 @@ void dbUninitialize() {
   memset(dbName, 0, sizeof(dbName));
 }
 
-void dbInsertInboundFragment(void *tox_opaque,
+FUNC_LOCAL void dbInsertInboundFragment(void *tox_opaque,
                              uint32_t friend_number, int type, uint64_t id,
                              unsigned partNo, unsigned numParts, unsigned off, unsigned sz,
                              const uint8_t *data, size_t length,
@@ -223,7 +224,7 @@ void dbInsertInboundFragment(void *tox_opaque,
   dbUnlock(lock);
 }
 
-void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64_t id,
+FUNC_LOCAL void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64_t id,
                              uint64_t tm,
                              unsigned numParts,
                              const uint8_t *data, size_t length,
@@ -244,7 +245,7 @@ void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64_t id,
   dbUnlock(lock);
 }
 
-void dbOutboundPartConfirmed(uint32_t friend_number, uint64_t id, unsigned partNo, uint64_t tm) {
+FUNC_LOCAL void dbOutboundPartConfirmed(uint32_t friend_number, uint64_t id, unsigned partNo, uint64_t tm) {
   void *lock = dbLock();
   uint64_t rowid = getFragmentsDataRowid(friend_number, id);
   if (!rowid)
@@ -258,7 +259,7 @@ void dbOutboundPartConfirmed(uint32_t friend_number, uint64_t id, unsigned partN
   dbUnlock(lock);
 }
 
-void dbLoadPendingSentMessages(DbMsgPendingSentCb msgPendingSentCb) {
+FUNC_LOCAL void dbLoadPendingSentMessages(DbMsgPendingSentCb msgPendingSentCb) {
   void *lock = dbLock();
   prepare(&stmtSelectFragmentedOutboundPending,
     "SELECT friend_id, type, frags_id,"
@@ -289,13 +290,13 @@ void dbLoadPendingSentMessages(DbMsgPendingSentCb msgPendingSentCb) {
   dbUnlock(lock);
 }
 
-void dbClearPending(uint32_t friend_number, uint64_t id) {
+FUNC_LOCAL void dbClearPending(uint32_t friend_number, uint64_t id) {
   void *lock = dbLock();
   deleteDataRecord(friend_number, id);
   dbUnlock(lock);
 }
 
-void dbPeriodic() {
+FUNC_LOCAL void dbPeriodic() {
 }
 
 // internal definitions
