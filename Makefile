@@ -11,6 +11,7 @@ CFLAGS_OPT?=	-O3
 CFLAGS+=	-I$(TOX_HEADERS)
 CFLAGS+=	-fPIC
 CFLAGS+=	$(CFLAGS_OPT)
+CFLAGS+=	-Wall
 
 all: build
 
