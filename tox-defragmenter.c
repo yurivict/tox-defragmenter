@@ -5,19 +5,18 @@
 #include "tox-defragmenter.h"
 #include "database.h"
 #include "marker.h"
-
+#include "util.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 #include <inttypes.h>
-
 #include <stdio.h>
 
-#define LOG(fmt...) //printf("Defragmenter: Main:" fmt);
+#define LOG(op, fmt...) //utilLog(__FUNCTION__, "Main." op, fmt);
 #define WARNING(fmt...) printf("WARNING: Defragmenter:" fmt);
 
-static int8_t initializedApi = 0;
-static int8_t initializedDb = 0;
+static uint8_t initializedApi = 0;
+static uint8_t initializedDb = 0;
 static ToxcoreApi base_toxcore_api;
 #define TOX(function) base_toxcore_api.tox_##function
 #define MY(function) tox_defragmenter_##function
@@ -264,11 +263,11 @@ static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_ME
     return 0;
   // send
   if (length <= TOX_MAX_MESSAGE_LENGTH) {
-    LOG("SEND: MY(friend_send_message): passing through the short outgoing message of length=%d for friend_number=%d\n",
+    LOG("SEND", "passing through the short outgoing message of length=%d for friend_number=%d",
       (unsigned)length, friend_number)
     return TOX(friend_send_message)(tox, friend_number, type, message, length, error);
   } else {
-    LOG("SEND: MY(friend_send_message): GOT LONG MESSAGE with length=%d for friend_number=%d, splitting ...\n",
+    LOG("SEND", "GOT LONG MESSAGE with length=%d for friend_number=%d, splitting ...",
       (unsigned)length, friend_number)
     return MY(friend_send_message_long)(tox, friend_number, type, message, length, error);
   }
@@ -297,12 +296,12 @@ static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, T
                             message, length,
                             msg->receipt);
     // return the receipt
-    LOG("SEND: MY(friend_send_message_long): returning receipt # to client: msg=%p length=%u msg.numParts=%u, sending receipt %x to the client\n",
+    LOG("SEND", "returning receipt # to client: msg=%p length=%u msg.numParts=%u, sending receipt %x to the client",
       msg, (unsigned)length, msg->numParts, msg->receipt)
     return msg->receipt;
   } else {
     // failure to send all attempted parts translates into inability to send the whole message
-    LOG("SEND: MY(friend_send_message_long): failed to send the message of length=%u msg.numParts=%u, returning receipt 0 to the client\n",
+    LOG("SEND", "failed to send the message of length=%u msg.numParts=%u, returning receipt 0 to the client",
       (unsigned)length, msg->numParts)
     msgOutboundDelete(msg);
     return 0;
@@ -333,7 +332,7 @@ static void msgSendNextParts(Tox *tox, msg_outbound *msg) {
 }
 
 static void msgIsComplete(Tox *tox, msg_outbound *msg, void *user_data) {
-  LOG("SEND: msgIsComplete: msg=%p id="FID" msg.numParts=%u, sending receipt %x to the client\n",
+  LOG("SEND", "msg=%p id="FID" msg.numParts=%u, sending receipt %x to the client",
     msg, msg->id, msg->numParts, msg->receipt)
   CLIENT(friend_read_receipt_cb)(tox, msg->friend_number, msg->receipt, user_data);
   dbClearPending(msg->friend_number, msg->id);
@@ -350,8 +349,8 @@ static int msgSendPart(Tox *tox, msg_outbound *msg, unsigned i) {
   msg->fragments[i].timesSent++;
   addReceipt(receipt, msg, i+1, getCurrTimeMs());
   msg->numTransit++;
-  LOG("SEND: msgSendPart: sent partNo=%u of msg=%p id="FID
-                        " length=%u of msg=%p part.timesSent=%u msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u\n",
+  LOG("SEND", "sent partNo=%u of msg=%p id="FID
+             " length=%u of msg=%p part.timesSent=%u msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u",
     i, msg, msg->id,
     (unsigned)msg->fragments[i].length, msg, msg->fragments[i].timesSent, msg->numTransit, msg->numConfirmed, msg->numParts)
   return 1;
@@ -468,14 +467,14 @@ static void sendMore(Tox *tox) {
     return;
   msg_outbound *msg = msgsOutbound;
   do {
-    LOG("SEND: sendMore: trying to send more of the message msg=%p id="FID
-                       " numParts=%u numTransit=%u numConfirmed=%u\n",
+    LOG("SEND", "trying to send more of the message msg=%p id="FID
+               " numParts=%u numTransit=%u numConfirmed=%u",
       msg, msg->id, msg->numParts, msg->numTransit, msg->numConfirmed)
     if (isFriendOnline(tox, msg->friend_number)) {
       msgSendNextParts(tox, msg);
     } else {
-      LOG("SEND: sendMore: skipping msg=%p id="FID
-                         " numParts=%u numConfirmed=%u for friend=%u because this friend isn't online\n",
+      LOG("SEND", "skipping msg=%p id="FID
+                 " numParts=%u numConfirmed=%u for friend=%u because this friend isn't onlinen",
         msg, msg->id, msg->numParts, msg->numConfirmed, msg->friend_number)
     }
     msg = msg->next;
@@ -495,7 +494,7 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
                                    unsigned lengthMessage,
                                    const uint8_t *confirmed,
                                    unsigned lengthConfirmed, int receipt) {
-  LOG("SEND: loadPendingSentMessage: friend=%u type=%d id="FID" length=%u numConfirmed=%u numParts=%u\n",
+  LOG("SEND", "friend=%u type=%d id="FID" length=%u numConfirmed=%u numParts=%u",
     friend_number, type, id, lengthMessage, numConfirmed, numParts)
   msg_outbound *msg = splitMessage(message, lengthMessage, TOX_MAX_MESSAGE_LENGTH, id);
   if (msg->numParts != numParts || msg->numParts != lengthConfirmed) {
@@ -536,7 +535,7 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
 // receipts
 
 static void MY(friend_read_receipt_cb)(Tox *tox, uint32_t friend_number, uint32_t message_id, void *user_data) {
-  LOG("SEND: MY(friend_read_receipt_cb): GOT receipt: friend_number=%d message_id=%u user_data=%p\n",
+  LOG("SEND", "GOT receipt: friend_number=%d message_id=%u user_data=%p",
     friend_number, message_id, user_data)
   if (!tryProcessReceipt(tox, message_id, user_data))
     CLIENT(friend_read_receipt_cb)(tox, friend_number, message_id, user_data);
@@ -556,16 +555,16 @@ static int tryProcessReceipt(Tox *tox, uint32_t receipt, void *user_data) {
   free(f->data);
   f->data = NULL;
   dbOutboundPartConfirmed(msg->friend_number, msg->id, r->partNo, getCurrTimeMs());
-  LOG("SEND: tryProcessReceipt: found receipt=%u: msg=%p id="FID" for friend_number=%d"
-                              " partNo=%u timeout="FTM" msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u\n",
+  LOG("SEND", "found receipt=%u: msg=%p id="FID" for friend_number=%d"
+             " partNo=%u timeout="FTM" msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u",
       receipt, msg, msg->id, msg->friend_number,
       r->partNo, r->timestamp, msg->numTransit, msg->numConfirmed, msg->numParts)
   if (r->msg->numConfirmed < r->msg->numParts)
     if (isFriendOnline(tox, msg->friend_number)) {
       msgSendNextParts(tox, msg);
     } else {
-      LOG("SEND: tryProcessReceipt: skipping msg=%p id="FID
-                                  " numParts=%u for friend=%u because this friend isn't online\n",
+      LOG("SEND", "skipping msg=%p id="FID
+                 " numParts=%u for friend=%u because this friend isn't online",
         msg, msg->id, msg->numParts, msg->friend_number)
     }
   else
@@ -599,7 +598,7 @@ static void MY(friend_message_cb)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_
   if (isFragment(message, length))
     processInFragment(tox, friend_number, type, message, length, user_data);
   else {
-    LOG("RECV: MY(friend_message_cb): passing through the incoming message length=%d\n", (unsigned)length)
+    LOG("RECV", "passing through the incoming message length=%d", (unsigned)length)
     CLIENT(friend_message_cb)(tox, friend_number, type, message, length, user_data);
   }
 }
@@ -607,7 +606,7 @@ static void MY(friend_message_cb)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_
 static void messageReady(void *tox_opaque,
                          uint64_t tm1, uint64_t tm2,
                          uint32_t friend_number, int type, const uint8_t *message, size_t length, void *user_data) {
-  LOG("RECV: messageReady: forwarding the message of length=%u to the client\n", (unsigned)length)
+  LOG("RECV", "forwarding the message of length=%u to the client", (unsigned)length)
   CLIENT(friend_message_cb)((Tox*)tox_opaque, friend_number, (TOX_MESSAGE_TYPE)type, message, length, user_data);
 }
 
@@ -619,7 +618,7 @@ static void processInFragment(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE
                                    &id,
                                    &partNo, &numParts, &off, &sz);
 
-  LOG("RECV: processInFragment: friend=%u id="FID" length=%u partNo=%u numParts=%u off=%u sz=%u\n",
+  LOG("RECV", "friend=%u id="FID" length=%u partNo=%u numParts=%u off=%u sz=%u",
     friend_number, id, (unsigned)length, partNo, numParts, off, sz)
   dbInsertInboundFragment((void*)tox,
                           friend_number, type,
@@ -635,7 +634,8 @@ static void processInFragment(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE
 //
 
 ToxcoreApi MY(initialize_api)(const ToxcoreApi *api) {
-  LOG("INIT: MY(initialize_api)\n")
+  utilInitialize();
+  LOG("INIT", "initialize")
   ToxcoreApi MY(toxcore_api);
   // save the base API
   base_toxcore_api = *api;
@@ -651,7 +651,8 @@ ToxcoreApi MY(initialize_api)(const ToxcoreApi *api) {
 }
 
 void MY(initialize_db)(sqlite3* db, ToxDefragmenterDbLockCb lockCb, ToxDefragmenterDbUnlockCb unlockCb, void *user_data) {
-  LOG("INIT: MY(initialize_db)\n")
+  utilInitialize();
+  LOG("INIT", "initialize")
   dbInitialize(db, lockCb, unlockCb, user_data);
   initializedDb = 1;
   if (initializedApi && initializedDb)
@@ -659,7 +660,8 @@ void MY(initialize_db)(sqlite3* db, ToxDefragmenterDbLockCb lockCb, ToxDefragmen
 }
 
 void MY(initialize_db_inmemory)() {
-  LOG("INIT: MY(initialize_db_inmemory)\n")
+  utilInitialize();
+  LOG("INIT", "initialize")
   dbInitializeInMemory();
   initializedDb = 1;
   if (initializedApi && initializedDb)
@@ -667,16 +669,17 @@ void MY(initialize_db_inmemory)() {
 }
 
 void MY(uninitialize)() {
-  LOG("INIT: MY(uninitialize)\n")
+  LOG("INIT", "finalize")
   uninitialize();
   dbUninitialize();
+  utilUninitialize();
   initializedApi = 0;
   initializedDb = 0;
   base_toxcore_api = (ToxcoreApi){0};
 }
 
 void MY(periodic)(Tox *tox) {
-  //LOG("PERIODIC: MY(periodic): tm="FTM" initializedApi=%d initializedDb=%d\n", getCurrTimeMs(), initializedApi, initializedDb)
+  //LOG("PERIODIC", "tm="FTM" initializedApi=%d initializedDb=%d", getCurrTimeMs(), initializedApi, initializedDb)
   if (!initializedApi || !initializedDb)
     return;
   // send

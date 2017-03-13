@@ -4,6 +4,7 @@
 
 #include "sqlite-interface.h"
 #include "database.h"
+#include "util.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,7 +15,7 @@
 // macros
 #define CK_ERROR(stmt...) \
   (SQLITE_OK != (rc = stmt))
-#define LOG(fmt...) //printf("Defragmenter: DB: " fmt);
+#define LOG(fmt...) //utilLog("Db", fmt);
 
 // database objects
 static sqlite3 *db = NULL;
@@ -135,7 +136,7 @@ void dbInsertInboundFragment(void *tox_opaque,
   // In case fragmented_meta exists but fragmented_data doesn't, this message is already finished
   // and fragments are considered duplicates and are ignored.
 
-  LOG("part#%u off=%u sz=%u len=%u data=-->%*s<--\n", partNo, off, sz, (unsigned)length, (unsigned)length, (const char*)data)
+  LOG("part#%u off=%u sz=%u len=%u data=-->%*s<--", partNo, off, sz, (unsigned)length, (unsigned)length, (const char*)data)
   void *lock = dbLock();
   prepare(&stmtInsertFragmentedDataInbound,
     "INSERT INTO fragmented_data (friend_id, frags_id, message)"
@@ -164,7 +165,7 @@ void dbInsertInboundFragment(void *tox_opaque,
     if (blobCache)
       blobCacheCloseBlob();
     blobCache = openBlob("fragmented_data", "message", rowid);
-    LOG("opened a blob object for rowid=%"PRIi64"\n", rowid)
+    LOG("opened a blob object for rowid=%"PRIi64"", rowid)
     blobCacheRowid = rowid;
   }
   sqlite3_blob *blob = blobCache;
@@ -182,7 +183,7 @@ void dbInsertInboundFragment(void *tox_opaque,
     return; // duplicate fragment received
   }
   writeBlob(blob, data, length, off);
-  LOG("wrote a blob portion for rowid=%"PRIi64": length=%u off=%u\n", rowid, (unsigned)length, off)
+  LOG("wrote a blob portion for rowid=%"PRIi64": length=%u off=%u", rowid, (unsigned)length, off)
 #if !defined(USE_BLOB_CACHE)
   closeBlob(blob);
 #endif
@@ -200,7 +201,7 @@ void dbInsertInboundFragment(void *tox_opaque,
 #endif
     // notify the caller that the message is complete
     // the message is ready, notify the caller
-    LOG("dbInsertInboundFragment >>> msgReadyCb\n")
+    LOG("dbInsertInboundFragment >>> msgReadyCb")
     msgReadyCb(
       tox_opaque,
       sqlite3_column_int64(stmtSelectFragmentedInboundDone, 0),
@@ -210,12 +211,12 @@ void dbInsertInboundFragment(void *tox_opaque,
       (const uint8_t*)sqlite3_column_blob(stmtSelectFragmentedInboundDone, 3),
       sqlite3_column_int64(stmtSelectFragmentedInboundDone, 4),
       user_data);
-    LOG("dbInsertInboundFragment <<< msgReadyCb\n")
+    LOG("dbInsertInboundFragment <<< msgReadyCb")
     resetStmt(stmtSelectFragmentedInboundDone);
-    LOG("dbInsertInboundFragment: done resetStmt\n")
+    LOG("dbInsertInboundFragment: done resetStmt")
     // delete the data record, only leave the meta record in order to ignore further duplicates
     deleteDataRecord(friend_number, id);
-    LOG("dbInsertInboundFragment: done deleteDataRecord\n")
+    LOG("dbInsertInboundFragment: done deleteDataRecord")
   } else {
     resetStmt(stmtSelectFragmentedInboundDone);
   }
@@ -316,7 +317,7 @@ static void initDb() {
 static void execSql(const char *sql) {
   int rc;
   char *exec_errmsg;
-  LOG("execSql: sql=%s\n", sql)
+  LOG("execSql: sql=%s", sql)
   if (CK_ERROR(sqlite3_exec(db, sql, NULL, NULL, &exec_errmsg)))
     errSql(rc, "executing sql", sql);
 }
@@ -376,7 +377,7 @@ static void updateFragmentedMetaDone(uint64_t tm, uint32_t friend_number, uint64
 }
 
 static void deleteDataRecord(uint32_t friend_number, uint64_t id) {
-  LOG("deleteDataRecord: friend_number=%u id=%"PRIu64"\n", friend_number, id)
+  LOG("deleteDataRecord: friend_number=%u id=%"PRIu64"", friend_number, id)
   prepare(&stmtDeleteFragmentedData,
     "DELETE FROM fragmented_data WHERE friend_id=? AND frags_id=?;");
   bind_Int_Int64(stmtDeleteFragmentedData, friend_number, id);
@@ -497,14 +498,14 @@ static void execPrepared(sqlite3_stmt *stmt) {
   if ((rc = sqlite3_step(stmt)) != SQLITE_DONE)
     errSql(rc, "executing prepared statement", sqlite3_sql(stmt));
   resetStmt(stmt);
-  LOG("execPrepared: sql=%s\n", sqlite3_sql(stmt))
+  LOG("execPrepared: sql=%s", sqlite3_sql(stmt))
 }
 
 static int execPreparedRowOrNot(sqlite3_stmt *stmt) {
   int rc;
   if ((rc = sqlite3_step(stmt)) != SQLITE_ROW && rc != SQLITE_DONE)
     errSql(rc, "executing prepared statement", sqlite3_sql(stmt));
-  LOG("execPreparedRowOrNot: sql=%s rowExists=%s\n", sqlite3_sql(stmt), rc == SQLITE_ROW ? "YES" : "NO")
+  LOG("execPreparedRowOrNot: sql=%s rowExists=%s", sqlite3_sql(stmt), rc == SQLITE_ROW ? "YES" : "NO")
   return rc == SQLITE_ROW;
 }
 
@@ -512,9 +513,9 @@ static int execPreparedInt64(sqlite3_stmt *stmt, int iCol, int64_t *value) {
   int rc;
   if ((rc = sqlite3_step(stmt)) != SQLITE_ROW && rc != SQLITE_DONE)
     errSql(rc, "executing prepared statement", sqlite3_sql(stmt));
-  LOG("execPreparedInt64: sql=%s rowExists=%s ...\n", sqlite3_sql(stmt), rc == SQLITE_ROW ? "YES" : "NO")
+  LOG("execPreparedInt64: sql=%s rowExists=%s ...", sqlite3_sql(stmt), rc == SQLITE_ROW ? "YES" : "NO")
   if (rc == SQLITE_ROW) {
-    LOG("execPreparedInt64: ... rowExists=%s -> %lli\n", rc == SQLITE_ROW ? "YES" : "NO", sqlite3_column_int64(stmt, iCol))
+    LOG("execPreparedInt64: ... rowExists=%s -> %lli", rc == SQLITE_ROW ? "YES" : "NO", sqlite3_column_int64(stmt, iCol))
     *value = sqlite3_column_int64(stmt, iCol);
     resetStmt(stmt);
     return 1;
@@ -528,9 +529,9 @@ static int execPreparedText(sqlite3_stmt *stmt, int iCol, unsigned char *value) 
   int rc;
   if ((rc = sqlite3_step(stmt)) != SQLITE_ROW && rc != SQLITE_DONE)
     errSql(rc, "executing prepared statement", sqlite3_sql(stmt));
-  LOG("execPreparedText: sql=%s rowExists=%s ...\n", sqlite3_sql(stmt), rc == SQLITE_ROW ? "YES" : "NO")
+  LOG("execPreparedText: sql=%s rowExists=%s ...", sqlite3_sql(stmt), rc == SQLITE_ROW ? "YES" : "NO")
   if (rc == SQLITE_ROW) {
-    LOG("execPreparedText: ... rowExists=%s -> %s\n", rc == SQLITE_ROW ? "YES" : "NO", (const char*)sqlite3_column_text(stmt, iCol))
+    LOG("execPreparedText: ... rowExists=%s -> %s", rc == SQLITE_ROW ? "YES" : "NO", (const char*)sqlite3_column_text(stmt, iCol))
     strcpy((char*)value, (const char*)sqlite3_column_text(stmt, iCol));
     resetStmt(stmt);
     return 1;

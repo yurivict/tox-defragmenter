@@ -1,6 +1,6 @@
 
-SRCS=		tox-defragmenter.c database.c marker.c
-HEADERS=	tox-defragmenter.h database.h marker.h sqlite-interface.h
+SRCS=		tox-defragmenter.c database.c marker.c util.c
+HEADERS=	tox-defragmenter.h database.h marker.h util.h sqlite-interface.h
 DEFRAG_LIB=	libtox-defragmenter.so
 
 CFLAGS?=	-I/usr/local/include -O3 -fPIC
