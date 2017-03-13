@@ -259,11 +259,17 @@ static int isFriendOnline(Tox *tox, uint32_t friend_number) {
 
 static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
                                         size_t length, TOX_ERR_FRIEND_SEND_MESSAGE *error) {
+  // prevent the client from sending the fragment signature
+  if (markerExists(message, length))
+    return 0;
+  // send
   if (length <= TOX_MAX_MESSAGE_LENGTH) {
-    LOG("SEND: MY(friend_send_message): passing through the outgoing message length=%d for friend_number=%d\n", (unsigned)length, friend_number)
+    LOG("SEND: MY(friend_send_message): passing through the short outgoing message of length=%d for friend_number=%d\n",
+      (unsigned)length, friend_number)
     return TOX(friend_send_message)(tox, friend_number, type, message, length, error);
   } else {
-    LOG("SEND: MY(friend_send_message): GOT LONG MESSAGE with length=%d for friend_number=%d, splitting ...\n", (unsigned)length, friend_number)
+    LOG("SEND: MY(friend_send_message): GOT LONG MESSAGE with length=%d for friend_number=%d, splitting ...\n",
+      (unsigned)length, friend_number)
     return MY(friend_send_message_long)(tox, friend_number, type, message, length, error);
   }
 }
