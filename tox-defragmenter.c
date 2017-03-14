@@ -35,8 +35,15 @@ static tox_friend_message_cb *client_friend_message_cb = 0;
 
 #define OUR_RECEIPT_RANGE1   0x70000000
 #define OUR_RECEIPT_RANGE2   0x7fffffff
-#define FRAGMENTS_AT_A_TIME  512
-#define RECEIPT_EXPIRATION_TIME 20000 // 20 sec
+
+struct params {
+  unsigned fragmentsAtATime;
+  unsigned receiptExpirationTimeMs;
+} params = {
+  // defaults
+  512,  // 512 packets at a time
+  20000 // 20 sec
+};
 
 #define FID "%"PRIu64
 #define FTM "%"PRIu64
@@ -277,7 +284,7 @@ static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, T
   msg_outbound *msg = splitMessage(message, length, TOX_MAX_MESSAGE_LENGTH, getCurrTimeMs());
   msg->friend_number = friend_number;
   for (unsigned i = 0; i < msg->numParts; i++) {
-    if (msg->numTransit < FRAGMENTS_AT_A_TIME) {
+    if (msg->numTransit < params.fragmentsAtATime) {
       if (msgSendPart(tox, msg, i))
         msg->lastSent = i;
     } else {
@@ -310,7 +317,7 @@ static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, T
 static void msgSendNextParts(Tox *tox, msg_outbound *msg) {
   // original pass through the fragments
   for (unsigned i = msg->lastSent+1; i < msg->numParts; i++) {
-    if (msg->numTransit < FRAGMENTS_AT_A_TIME) {
+    if (msg->numTransit < params.fragmentsAtATime) {
       if (msgSendPart(tox, msg, i))
         msg->lastSent = i;
     } else {
@@ -319,7 +326,7 @@ static void msgSendNextParts(Tox *tox, msg_outbound *msg) {
   }
   // send fragments that failed before for some reason
   for (unsigned i = 0; i < msg->numParts; i++) {
-    if (msg->numTransit < FRAGMENTS_AT_A_TIME &&
+    if (msg->numTransit < params.fragmentsAtATime &&
         msg->numTransit + msg->numConfirmed < msg->numParts) {
       if (!msg->fragments[i].receipt &&
           !msg->fragments[i].confirmed)
@@ -449,7 +456,7 @@ static void resendExpiredReceipts(Tox *tox) {
     return;
   uint64_t now = getCurrTimeMs();
   for (int i = receiptsLo; i < receiptsHi; i++)
-    if (receipts[i].receipt && receipts[i].timestamp + RECEIPT_EXPIRATION_TIME < now) {
+    if (receipts[i].receipt && receipts[i].timestamp + params.receiptExpirationTimeMs < now) {
       // clear receipt
       receipts[i].receipt = 0;
       receiptsNum--;
@@ -498,7 +505,7 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
   msg_outbound *msg = splitMessage(message, lengthMessage, TOX_MAX_MESSAGE_LENGTH, id);
   if (msg->numParts != numParts || msg->numParts != lengthConfirmed) {
     WARNING("mismatching number of parts of the pending outbound message for friend=%d msg=%p id="FID
-            ": expected %u, got %u parts and %u confirmations\n",
+            ": expected %u, got %u parts and %u confirmations, discarding the message\n",
       friend_number, msg, id, msg->numParts, numParts, lengthConfirmed)
     dbClearPending(friend_number, id);
     msgOutboundDelete(msg);
@@ -513,7 +520,7 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
     }
   }
   if (numConfirmed != msg->numConfirmed || numConfirmed > numParts) {
-    WARNING("mismatched or invalid confirmed count for friend=%d msg=%p id="FID": %u vs. %u\n",
+    WARNING("mismatched or invalid confirmed count for friend=%d msg=%p id="FID": %u vs. %u, discarding the message\n",
       friend_number, msg, id, numConfirmed, msg->numConfirmed)
     dbClearPending(friend_number, id);
     msgOutboundDelete(msg);
@@ -688,3 +695,8 @@ void MY(periodic)(Tox *tox) {
   // db
   dbPeriodic();
 }
+
+void MY(set_parameters)(unsigned fragmentsAtATime, unsigned receiptExpirationTimeMs) {
+  params = (struct params){fragmentsAtATime, receiptExpirationTimeMs};
+}
+
