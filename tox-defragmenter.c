@@ -33,18 +33,19 @@ static tox_friend_message_cb *client_friend_message_cb = 0;
   memset(idxDelta > 0 ? arr+idx1 : arr+idx2-idxDelta, 0, sizeof(arr[0])*idxDelta); \
 }
 
-#define OUR_RECEIPT_RANGE1   0x70000000
-#define OUR_RECEIPT_RANGE2   0x7fffffff
-
 struct params {
   unsigned maxMessageLength;
   unsigned fragmentsAtATime;
   unsigned receiptExpirationTimeMs;
+  uint32_t receiptRangeLo;
+  uint32_t receiptRangeHi;
 } params = {
   // defaults
   TOX_MAX_MESSAGE_LENGTH,
-  512,  // 512 packets at a time
-  20000 // 20 sec
+  512,        // 512 packets at a time
+  20000,      // 20 sec
+  0x70000000, // receipt range low
+  0x7fffffff  // receipt range high
 };
 
 #define FID "%"PRIu64
@@ -161,7 +162,7 @@ static uint64_t getCurrTimeMs() {
 }
 
 static uint32_t generateReceiptNo() {
-  ourLastReceipt = ourLastReceipt+1 <= OUR_RECEIPT_RANGE2 ? ourLastReceipt+1 : OUR_RECEIPT_RANGE1;
+  ourLastReceipt = ourLastReceipt+1 <= params.receiptRangeHi ? ourLastReceipt+1 : params.receiptRangeLo;
   // avoid possible conflict with receipts of the pending packets loaded from db
   if (msgsOutbound) {
     int changed;
@@ -170,7 +171,7 @@ static uint32_t generateReceiptNo() {
       msg_outbound *m = msgsOutbound;
       do {
         if (m->receipt == ourLastReceipt) {
-          ourLastReceipt = ourLastReceipt+1 <= OUR_RECEIPT_RANGE2 ? ourLastReceipt+1 : OUR_RECEIPT_RANGE1;
+          ourLastReceipt = ourLastReceipt+1 <= params.receiptRangeHi ? ourLastReceipt+1 : params.receiptRangeLo;
           changed = 1;
           break;
         }
@@ -197,7 +198,7 @@ static void receiptsInitialize() {
   receiptsNum = 0;
   receiptsAlloc = 32;
   receipts = NEWA(receipt_record, receiptsAlloc);
-  ourLastReceipt = OUR_RECEIPT_RANGE1;
+  ourLastReceipt = params.receiptRangeLo;
 }
 
 static void receiptsUninitialize() {
@@ -698,7 +699,10 @@ void MY(periodic)(Tox *tox) {
   dbPeriodic();
 }
 
-void MY(set_parameters)(unsigned maxMessageLength, unsigned fragmentsAtATime, unsigned receiptExpirationTimeMs) {
-  params = (struct params){maxMessageLength, fragmentsAtATime, receiptExpirationTimeMs};
+void MY(set_parameters)(unsigned maxMessageLength,
+                        unsigned fragmentsAtATime,
+                        unsigned receiptExpirationTimeMs,
+                        uint32_t receiptRangeLo, uint32_t receiptRangeHi) {
+  params = (struct params){maxMessageLength, fragmentsAtATime, receiptExpirationTimeMs, receiptRangeLo, receiptRangeHi};
 }
 
