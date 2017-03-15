@@ -14,7 +14,10 @@
 static const uint8_t markerChar[3] = {0xe2, 0x80, 0x8b}; // ZERO WIDTH SPACE' (U+200B), 3 bytes in UTF8 representation
 // frag_id is always 13 digits long, milliseconds timestamp
 static const int szMarkerChar = sizeof(markerChar);
-static const int szTm = 13, szIntMin = 1, szIntMax = 10, nInts = 4;
+#define szTm     13
+#define szIntMin 1
+#define szIntMax 10
+#define nInts    4
 
 typedef size_t U;
 
@@ -46,8 +49,8 @@ FUNC_LOCAL uint8_t markerPrint(uint64_t id, unsigned partNo, unsigned numParts, 
 }
 
 FUNC_LOCAL int markerExists(const uint8_t *message, size_t length) {
-  U fldOff[nInts];
-  U fldSz[nInts];
+  U fldOff[nInts] = {0};
+  U fldSz[nInts] = {0};
 
   return markerParseFields(message, length, fldOff, fldSz);
 }
