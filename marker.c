@@ -56,10 +56,10 @@ FUNC_LOCAL int markerExists(const uint8_t *message, size_t length) {
 }
 
 FUNC_LOCAL uint8_t markerParse(const uint8_t *message, size_t length,
-                    uint64_t *id,
-                    unsigned *partNo, unsigned *numParts, unsigned *off, unsigned *sz) {
-  U fldOff[nInts];
-  U fldSz[nInts];
+                               uint64_t *id,
+                               unsigned *partNo, unsigned *numParts, unsigned *off, unsigned *sz) {
+  U fldOff[nInts] = {0};
+  U fldSz[nInts] = {0};
 
   if (!markerParseFields(message, length, fldOff, fldSz))
     return 0; // not a marker
