@@ -175,8 +175,8 @@ FUNC_LOCAL void dbInsertInboundFragment(void *tox_opaque,
   uint8_t firstByte = 0;
   readBlob(blob, &firstByte, 1, off);
   if (firstByte && firstByte != data[0])
-    WARNING("mismatching byte in blob: expected 0x%02x found 0x%02x for msg id=%"PRIu64" partNo=%u numParts=%u off=%u sz=%u\n",
-      data[0], firstByte, id, partNo, numParts, off, sz);
+    WARNING("mismatching byte in blob: expected 0x%02x found 0x%02x for friend=%u msg id=%"PRIu64" partNo=%u numParts=%u off=%u sz=%u\n",
+      data[0], firstByte, friend_number, id, partNo, numParts, off, sz);
   if (firstByte) {
 #if !defined(USE_BLOB_CACHE)
     closeBlob(blob);
