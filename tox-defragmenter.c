@@ -37,10 +37,12 @@ static tox_friend_message_cb *client_friend_message_cb = 0;
 #define OUR_RECEIPT_RANGE2   0x7fffffff
 
 struct params {
+  unsigned maxMessageLength;
   unsigned fragmentsAtATime;
   unsigned receiptExpirationTimeMs;
 } params = {
   // defaults
+  TOX_MAX_MESSAGE_LENGTH,
   512,  // 512 packets at a time
   20000 // 20 sec
 };
@@ -268,7 +270,7 @@ static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_ME
   if (markerExists(message, length))
     return 0;
   // send
-  if (length <= TOX_MAX_MESSAGE_LENGTH) {
+  if (length <= params.maxMessageLength) {
     LOG("SEND", "passing through the short outgoing message of length=%d for friend_number=%d",
       (unsigned)length, friend_number)
     return TOX(friend_send_message)(tox, friend_number, type, message, length, error);
@@ -281,7 +283,7 @@ static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_ME
 
 static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
                                              size_t length, TOX_ERR_FRIEND_SEND_MESSAGE *error) {
-  msg_outbound *msg = splitMessage(message, length, TOX_MAX_MESSAGE_LENGTH, getCurrTimeMs());
+  msg_outbound *msg = splitMessage(message, length, params.maxMessageLength, getCurrTimeMs());
   msg->friend_number = friend_number;
   for (unsigned i = 0; i < msg->numParts; i++) {
     if (msg->numTransit < params.fragmentsAtATime) {
@@ -502,7 +504,7 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
                                    unsigned lengthConfirmed, int receipt) {
   LOG("SEND", "friend=%u type=%d id="FID" length=%u numConfirmed=%u numParts=%u",
     friend_number, type, id, lengthMessage, numConfirmed, numParts)
-  msg_outbound *msg = splitMessage(message, lengthMessage, TOX_MAX_MESSAGE_LENGTH, id);
+  msg_outbound *msg = splitMessage(message, lengthMessage, params.maxMessageLength, id);
   if (msg->numParts != numParts || msg->numParts != lengthConfirmed) {
     WARNING("mismatching number of parts of the pending outbound message for friend=%d msg=%p id="FID
             ": expected %u, got %u parts and %u confirmations, discarding the message\n",
@@ -696,7 +698,7 @@ void MY(periodic)(Tox *tox) {
   dbPeriodic();
 }
 
-void MY(set_parameters)(unsigned fragmentsAtATime, unsigned receiptExpirationTimeMs) {
-  params = (struct params){fragmentsAtATime, receiptExpirationTimeMs};
+void MY(set_parameters)(unsigned maxMessageLength, unsigned fragmentsAtATime, unsigned receiptExpirationTimeMs) {
+  params = (struct params){maxMessageLength, fragmentsAtATime, receiptExpirationTimeMs};
 }
 
