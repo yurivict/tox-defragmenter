@@ -703,6 +703,8 @@ void MY(set_parameters)(unsigned maxMessageLength,
                         unsigned fragmentsAtATime,
                         unsigned receiptExpirationTimeMs,
                         uint32_t receiptRangeLo, uint32_t receiptRangeHi) {
+  if (initializedApi || initializedDb)
+    WARNING("parameters should be set in uninitialized state")
   params = (struct params){maxMessageLength, fragmentsAtATime, receiptExpirationTimeMs, receiptRangeLo, receiptRangeHi};
 }
 
