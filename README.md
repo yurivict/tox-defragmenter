@@ -16,5 +16,11 @@ For clients that don't use SQLite or sqlcipher tox-defragmenter can create in-me
 * Build-time dependency on the tox library.
 * Expects the caller to depend on SQLite or sqlcipher.
 
+# Build
+Run 'make' command.
+
+# Tests
+In order to run tests please run the command 'make run-regression-tests'.
+
 # Caveats
 * Due to the SQLite blob bug discovered during the development process, tox-defragmenter has to open and close db blobs for each fragment, which causes the performance impact on the receiving end. Until this SQLite bug is fixed, only moderately long messages can be sent.
