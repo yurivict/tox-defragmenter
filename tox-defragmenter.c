@@ -25,6 +25,7 @@ static ToxcoreApi base_toxcore_api;
 static tox_friend_read_receipt_cb *client_friend_read_receipt_cb = 0;
 static tox_friend_message_cb *client_friend_message_cb = 0;
 static unsigned markerMaxSizeEver = 0;
+static uint64_t lastMsgId = 0;
 
 #define NEW(type) ((type*)calloc(sizeof(type), 1))
 #define NEWA(elt, num) ((elt*)calloc(sizeof(elt), num))
@@ -163,6 +164,15 @@ static uint64_t getCurrTimeMs() {
   return tm.tv_sec*1000 + tm.tv_usec/1000;
 }
 
+static uint64_t generateMsgId() {
+  uint64_t msgId = getCurrTimeMs();
+  // prevent id collisions in case of a very fast message creation
+  while (msgId <= lastMsgId)
+    msgId++;
+  lastMsgId = msgId;
+  return msgId;
+}
+
 static uint32_t generateReceiptNo() {
   ourLastReceipt = ourLastReceipt+1 <= params.receiptRangeHi ? ourLastReceipt+1 : params.receiptRangeLo;
   // avoid possible conflict with receipts of the pending packets loaded from db
@@ -287,7 +297,7 @@ static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_ME
 
 static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
                                              size_t length, TOX_ERR_FRIEND_SEND_MESSAGE *error) {
-  msg_outbound *msg = splitMessage(message, length, params.maxMessageLength, getCurrTimeMs());
+  msg_outbound *msg = splitMessage(message, length, params.maxMessageLength, generateMsgId());
   msg->friend_number = friend_number;
   for (unsigned i = 0; i < msg->numParts; i++) {
     if (msg->numTransit < params.fragmentsAtATime) {
