@@ -24,13 +24,11 @@ $(DEFRAG_LIB_A): $(DEFRAG_ALL_O)
 	rm -f $@
 	ar rcs $@ $<
 
-$(DEFRAG_ALL_O): $(SRCS)
+$(DEFRAG_ALL_O): $(SRCS) $(HEADERS) Makefile
 	$(CC) -c $(SRCS) $(CFLAGS)
 	ld $(OBJS) -Ur $(CFLAGS_OPT) -o $@.ld.o
 	objcopy --localize-hidden $@.ld.o $@
 	rm $@.ld.o
-
-$(DEFRAG_ALL_O): $(HEADERS) Makefile
 
 install:
 	mkdir -p $(DESTDIR)/$(PREFIX)/include $(DESTDIR)/$(PREFIX)/lib
