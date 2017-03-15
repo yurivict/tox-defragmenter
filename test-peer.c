@@ -25,6 +25,7 @@
 #define LOG(fmt...) //{fprintf(stderr, "LOG " fmt); fprintf(stderr, "\n");}
 #define ABORT {LOG("ABORT @%s:%u", __FUNCTION__, __LINE__) abort();}
 #define ERROR(fmt...) {fprintf(stderr, "ERROR: " fmt); fprintf(stderr, "\n"); ABORT}
+#define SLEEP_MS(timeMs) {usleep(timeMs*1000);}
 
 #define DEFRAG_RECEIPTS_LO 0x10000000
 #define DEFRAG_RECEIPTS_HI DEFRAG_RECEIPTS_LO+1000000
@@ -190,7 +191,7 @@ static int openSocket(const char *sockName, char connectOrListen) {
     while (true) {
       res = connect(fd, (struct sockaddr*)&address, sizeof(address));
       if (res && errno == ENOENT) {
-        usleep(50*1000); // 50 ms
+        SLEEP_MS(50) // 50 ms
         continue;
       }
       CK(res)
