@@ -1,3 +1,6 @@
 libtox-defragmenter.so
 libtox-defragmenter.a
+test-peer
 *.o
+test-*.txt
+test-*.sqlite

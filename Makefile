@@ -36,4 +36,14 @@ install:
 	cp $(DEFRAG_LIB_SO) $(DEFRAG_LIB_A) $(DESTDIR)/$(PREFIX)/lib/
 
 clean:
-	rm -f $(OBJS) $(DEFRAG_ALL_O) $(DEFRAG_LIB_SO) $(DEFRAG_LIB_A)
+	rm -f $(OBJS) $(DEFRAG_ALL_O) $(DEFRAG_LIB_SO) $(DEFRAG_LIB_A) test-peer
+
+run-regression-tests: tests
+	./test.sh
+
+tests: test-peer
+
+test-peer: test-peer.c $(DEFRAG_LIB_A) Makefile
+	$(CC) $(CFLAGS) -o $@ $< $(DEFRAG_LIB_A) -L/usr/local/lib -lsqlite3
+
+.PHONY: all build install clean tests run-regression-tests
