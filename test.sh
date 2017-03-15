@@ -55,6 +55,9 @@ compareMsgs() {
   grep "^M" $f2 | sort > ${f2}.x
   diff ${f1}.x ${f2}.x > /dev/null 2>&1
 }
+cleanup() {
+  rm -f $NET_SOCKET test-in*txt* test-out*txt* test-db*.sqlite
+}
 
 ## generate input
 echo "Generating messages ..."
@@ -75,6 +78,7 @@ do
 done
 
 if [ "$FAIL" -ne "0" ]; then
+  cleanup
   echo "FAILURE: $FAIL process(es) failed"
   exit 1
 fi
@@ -83,8 +87,10 @@ fi
 echo "Comparing message files ..."
 if ! compareMsgs test-in1.txt test-out2.txt ||
    ! compareMsgs test-in2.txt test-out1.txt; then
+  cleanup
   echo "FAILURE: messages don't match!"
   exit 1
 fi
 
+cleanup
 echo "SUCCESS: Tests succeeded! (`date`)"
