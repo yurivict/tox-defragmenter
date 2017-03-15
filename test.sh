@@ -53,8 +53,8 @@ generateTestInput > test-in2.txt
 
 ## run peer simulation
 rm -f test-db1.sqlite test-db2.sqlite $NET_SOCKET
-$CMD_PEER test-db1.sqlite $NET_SOCKET C $PARAMS < test-in1.txt > test-out1.txt &
-$CMD_PEER test-db2.sqlite $NET_SOCKET L $PARAMS < test-in2.txt > test-out2.txt &
+$CMD_PEER 5 7 test-db1.sqlite $NET_SOCKET C $PARAMS < test-in1.txt > test-out1.txt &
+$CMD_PEER 7 5 test-db2.sqlite $NET_SOCKET L $PARAMS < test-in2.txt > test-out2.txt &
 
 ## wait for the peers to finish
 FAIL=0

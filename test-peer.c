@@ -32,6 +32,8 @@
 
 typedef struct Tox Tox;
 
+static unsigned myFriendId = 0;
+static unsigned hisFriendId = 0;
 static sqlite3 *sqlite = NULL;
 static bool sawIfaceEOF = false;
 static bool sawNetEOF = false;
@@ -57,7 +59,8 @@ static stream streamIn, streamOut, streamNet;
 // usage
 //
 static void usage() {
-  fprintf(stderr, "Usage: ./test-peer dbFname netSocketFname connectOrListen={C,L}\n");
+  fprintf(stderr, "Usage: ./test-peer myFriendId hisFriendId\n");
+  fprintf(stderr, "                   dbFname netSocketFname connectOrListen={C,L}\n");
   fprintf(stderr, "                   paramMaxMessageLength paramFragmentsAtATime paramReceiptExpirationTimeMs\n");
   exit(1);
 }
@@ -281,9 +284,9 @@ static void onAnyWR(bool sendMsgId, packet *p, stream *s) {
   LOG("sending pkt=%p into the stream %p", p, s)
   if (p->msg)
     if (sendMsgId)
-      fprintf(s->file, "M %u %lu %.*s\n", p->msgId, p->msgLength, (int)p->msgLength, p->msg);
+      fprintf(s->file, "M %u %u %lu %.*s\n", p->msgId, myFriendId, p->msgLength, (int)p->msgLength, p->msg); // to Net
     else
-      fprintf(s->file, "M %lu %.*s\n", p->msgLength, (int)p->msgLength, p->msg);
+      fprintf(s->file, "M %lu %.*s\n", p->msgLength, (int)p->msgLength, p->msg); // to Iface
   else if (p->receipt)
     fprintf(s->file, "R %u\n", p->receipt);
   else
@@ -307,7 +310,7 @@ static void onIfaceRD(stream *s) {
     skipChar(s, ' ');
     char *msg = readString(s, '\n');
     LOG("IFACE: onIfaceRD read msg=%s", msg)
-    int receipt = apiFront.tox_friend_send_message(NULL, 1, TOX_MESSAGE_TYPE_NORMAL, (const uint8_t*)msg, strlen(msg), NULL);
+    int receipt = apiFront.tox_friend_send_message(NULL, hisFriendId, TOX_MESSAGE_TYPE_NORMAL, (const uint8_t*)msg, strlen(msg), NULL);
     ++msgIdIface;
     free(msg);
     if (receipt == 0)
@@ -346,12 +349,13 @@ static bool isNetRD() {
 static void onNetRD(stream *s) {
   LOG(">>> onNetRD")
   switch (readChar(s)) {
-  case 'M': { // message: M msgId sz msg nl
+  case 'M': { // message: M msgId fromFriendId sz msg nl
     skipChar(s, ' ');
     unsigned msgId = readUInt(s, ' ');
+    unsigned fromFriendId = readUInt(s, ' ');
     char *msg = readString(s, '\n');
     LOG("NET: onNetRD >>> read msg=%s len=%lu", msg, strlen(msg))
-    cb_friend_message_cb(NULL, 1, TOX_MESSAGE_TYPE_NORMAL, (const uint8_t*)msg, strlen(msg), NULL/*user_data*/);
+    cb_friend_message_cb(NULL, fromFriendId, TOX_MESSAGE_TYPE_NORMAL, (const uint8_t*)msg, strlen(msg), NULL/*user_data*/);
     LOG("NET: onNetRD <<< passed to cb msg=%s len=%lu", msg, strlen(msg))
     free(msg);
     // send receipt back to the sender
@@ -441,21 +445,23 @@ static void loop(IsXX needToContinue) {
 //
 
 int main(int argc, char *argv[]) {
-  if (argc != 7)
+  if (argc != 9)
     usage();
+  myFriendId = atoi(argv[1]);
+  hisFriendId = atoi(argv[2]);
   streamIn  = (stream){.fd = STDIN_FILENO,  .file = stdin};
   streamOut = (stream){.fd = STDOUT_FILENO, .file = stdout};
   // open
-  streamNet.fd = openSocket(argv[2]/*netSocketFname*/, argv[3][0] /*doConnect*/);
+  streamNet.fd = openSocket(argv[4]/*netSocketFname*/, argv[5][0] /*doConnect*/);
   streamNet.file = fdopen(streamNet.fd, "w");
   LOG("pid#%d: connected, streamIn=%p streamOut=%p streamNet=%p", getpid(), &streamIn, &streamOut, &streamNet)
 
   // params
-  tox_defragmenter_set_parameters(atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), DEFRAG_RECEIPTS_LO, DEFRAG_RECEIPTS_HI);
+  tox_defragmenter_set_parameters(atoi(argv[6]), atoi(argv[7]), atoi(argv[8]), DEFRAG_RECEIPTS_LO, DEFRAG_RECEIPTS_HI);
 
   // initialize interface
-  if (argv[1][0]) {
-    CK(sqlite3_open(argv[1]/*dbFname*/, &sqlite))
+  if (argv[3][0]) {
+    CK(sqlite3_open(argv[3]/*dbFname*/, &sqlite))
     apiFront = tox_defragmenter_initialize_api(&apiBase);
     tox_defragmenter_initialize_db(sqlite, NULL, NULL, NULL);
   } else {
