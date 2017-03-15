@@ -2,6 +2,7 @@
 // Copyright © 2017 by Yuri Victorovich. All rights reserved.
 //
 
+#include "common.h"
 #include "tox-defragmenter.h"
 #include "database.h"
 #include "marker.h"
@@ -11,9 +12,9 @@
 #include <sys/time.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <limits.h>
 
 #define LOG(op, fmt...) //utilLog(__FUNCTION__, "Main." op, fmt);
-#define WARNING(fmt...) printf("WARNING: Defragmenter:" fmt);
 
 static uint8_t initializedApi = 0;
 static uint8_t initializedDb = 0;
@@ -23,6 +24,7 @@ static ToxcoreApi base_toxcore_api;
 #define CLIENT(function) client_##function
 static tox_friend_read_receipt_cb *client_friend_read_receipt_cb = 0;
 static tox_friend_message_cb *client_friend_message_cb = 0;
+static unsigned markerMaxSizeEver = 0;
 
 #define NEW(type) ((type*)calloc(sizeof(type), 1))
 #define NEWA(elt, num) ((elt*)calloc(sizeof(elt), num))
@@ -185,6 +187,7 @@ static uint32_t generateReceiptNo() {
 static void initialize() {
   receiptsInitialize();
   loadPendingSentMessages();
+  markerMaxSizeEver = markerMaxSizeBytes(INT_MAX, INT_MAX);
 }
 
 static void uninitialize() {
@@ -366,8 +369,8 @@ static int msgSendPart(Tox *tox, msg_outbound *msg, unsigned i) {
 }
 
 static msg_outbound* splitMessage(const uint8_t *message, size_t length, size_t maxLength, uint64_t id) {
-  uint8_t maxSignature = markerMaxSizeBytes((length + maxLength-64 - 1)/(maxLength-64), length); // conservative estimate
-  maxLength -= maxSignature;
+  uint8_t maxMarker = markerMaxSizeBytes((length + maxLength-markerMaxSizeEver - 1)/(maxLength-markerMaxSizeEver), length); // conservative estimate
+  maxLength -= maxMarker;
   const uint8_t *m = message;
   unsigned numParts = (length + maxLength - 1)/maxLength;
   fragment *fragments = NEWA(fragment, numParts);
@@ -377,7 +380,7 @@ static msg_outbound* splitMessage(const uint8_t *message, size_t length, size_t 
   unsigned len = length;
   for (unsigned partNo = 1; len > 0; partNo++) {
     size_t step = len >= maxLength ? maxLength : len;
-    uint8_t marker[maxSignature+1];
+    uint8_t marker[maxMarker+1];
     uint8_t markerSize = markerPrint(id, partNo, numParts, off, length, marker);
     *f = (fragment){.length = markerSize+step, .data = NEWA(uint8_t, markerSize+step), .receipt = 0};
     memcpy(f->data, marker, markerSize);
@@ -704,7 +707,9 @@ void MY(set_parameters)(unsigned maxMessageLength,
                         unsigned receiptExpirationTimeMs,
                         uint32_t receiptRangeLo, uint32_t receiptRangeHi) {
   if (initializedApi || initializedDb)
-    WARNING("parameters should be set in uninitialized state")
+    WARNING("parameters should be set in uninitialized state\n")
+  if (maxMessageLength <= markerMaxSizeBytes(INT_MAX, INT_MAX))
+    WARNING("invalid maxMessageLength=%u in parameters, min value is %u\n", maxMessageLength, markerMaxSizeBytes(INT_MAX, INT_MAX))
   params = (struct params){maxMessageLength, fragmentsAtATime, receiptExpirationTimeMs, receiptRangeLo, receiptRangeHi};
 }
 

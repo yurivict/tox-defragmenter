@@ -175,7 +175,7 @@ FUNC_LOCAL void dbInsertInboundFragment(void *tox_opaque,
   uint8_t firstByte = 0;
   readBlob(blob, &firstByte, 1, off);
   if (firstByte && firstByte != data[0])
-    fprintf(stderr, "mismatching byte in blob: expected 0x%02x found 0x%02x\n", data[0], firstByte);
+    WARNING("mismatching byte in blob: expected 0x%02x found 0x%02x\n", data[0], firstByte);
   if (firstByte) {
 #if !defined(USE_BLOB_CACHE)
     closeBlob(blob);
