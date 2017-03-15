@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo "Starting tests (`date`)"
+
 ## no UTF-8
 LC_CTYPE=C
 
@@ -46,12 +48,21 @@ generateTestInput() {
   generateMessages 10 50 5000
   echo "E"
 }
+compareMsgs() {
+  local f1=$1
+  local f2=$2
+  grep "^M" $f1 | sort > ${f1}.x
+  grep "^M" $f2 | sort > ${f2}.x
+  diff ${f1}.x ${f2}.x > /dev/null 2>&1
+}
 
 ## generate input
+echo "Generating messages ..."
 generateTestInput > test-in1.txt
 generateTestInput > test-in2.txt
 
 ## run peer simulation
+echo "Testing ..."
 rm -f test-db1.sqlite test-db2.sqlite $NET_SOCKET
 $CMD_PEER 5 7 test-db1.sqlite $NET_SOCKET C $PARAMS < test-in1.txt > test-out1.txt &
 $CMD_PEER 7 5 test-db2.sqlite $NET_SOCKET L $PARAMS < test-in2.txt > test-out2.txt &
@@ -68,4 +79,12 @@ if [ "$FAIL" -ne "0" ]; then
   exit 1
 fi
 
-echo "SUCCESS!"
+## compare messages
+echo "Comparing message files ..."
+if ! compareMsgs test-in1.txt test-out2.txt ||
+   ! compareMsgs test-in2.txt test-out1.txt; then
+  echo "FAILURE: messages don't match!"
+  exit 1
+fi
+
+echo "SUCCESS: Tests succeeded! (`date`)"
