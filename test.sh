@@ -2,9 +2,6 @@
 
 echo "Starting tests (`date`)"
 
-## no UTF-8
-LC_CTYPE=C
-
 ## params
 PARAM_MAX_MESSAGE_LENGTH=75
 PARAM_FAGMENTS_AT_A_TIME=10
