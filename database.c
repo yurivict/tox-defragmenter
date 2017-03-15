@@ -387,10 +387,8 @@ static sqlite3_stmt* prepareStatement(const char *sql) {
   int rc;
   sqlite3_stmt *stmt = NULL;
   const char *tail = NULL;
-  if (CK_ERROR(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, &tail))) {
-    fprintf(stderr, "Error while preparing sql=%s error=%d\n", sql, rc);
-    abort();
-  }
+  if (CK_ERROR(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, &tail)))
+    errSql(rc, "preparing statement", sql);
   return stmt;
 }
 
