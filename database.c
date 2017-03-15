@@ -50,9 +50,9 @@ static void initDb();
 static void execSql(const char *sql);
 static void createSchema();
 static void readDbName(char *name);
-static uint64_t getFragmentsDataRowid(uint32_t friend_number, uint64_t id);
-static void updateFragmentedMetaDone(uint64_t tm, uint32_t friend_number, uint64_t id);
-static void deleteDataRecord(uint32_t friend_number, uint64_t id);
+static uint64_t getFragmentsDataRowid(int outbound, uint32_t friend_number, uint64_t id);
+static void updateFragmentedMetaDone(int outbound, uint64_t tm, uint32_t friend_number, uint64_t id);
+static void deleteDataRecord(int outbound, uint32_t friend_number, uint64_t id);
 static sqlite3_stmt* prepareStatement(const char *sql);
 static void destroyPreparedStatement(sqlite3_stmt **stmt);
 static void destroyPreparedStatements();
@@ -61,7 +61,8 @@ static void bindInt(sqlite3_stmt *stmt, int n, int a);
 static void bindInt64(sqlite3_stmt *stmt, int n, sqlite3_int64 a);
 static void bindBlob(sqlite3_stmt *stmt, int n, const uint8_t *data, size_t size);
 static void bind_Int_Int64(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2);
-static void bind_Int64_Int_Int64(sqlite3_stmt *stmt, sqlite3_int64 a1, int a2, sqlite3_int64 a3);
+static void bind_Int_Int_Int64(sqlite3_stmt *stmt, int a1, int a2, sqlite3_int64 a3);
+static void bind_Int_Int64_Int_Int64(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2, int a3, sqlite3_int64 a4);
 static void bind_Int_Int64_Blob_Int_Int(sqlite3_stmt *stmt,
                                         int a1, sqlite3_int64 a2, const uint8_t *a3data, size_t a3size,
                                         int a4, int a5);
@@ -140,9 +141,9 @@ FUNC_LOCAL void dbInsertInboundFragment(void *tox_opaque,
   LOG("part#%u off=%u sz=%u len=%u data=-->%*s<--", partNo, off, sz, (unsigned)length, (unsigned)length, (const char*)data)
   void *lock = dbLock();
   prepare(&stmtInsertFragmentedDataInbound,
-    "INSERT INTO fragmented_data (friend_id, frags_id, message)"
-    " SELECT ?, ?, zeroblob(?)"
-    " WHERE NOT EXISTS (SELECT 1 FROM fragmented_meta WHERE friend_id=? AND frags_id=?);");
+    "INSERT INTO fragmented_data (outbound, friend_id, frags_id, message)"
+    " SELECT 0, ?, ?, zeroblob(?)"
+    " WHERE NOT EXISTS (SELECT 1 FROM fragmented_meta WHERE outbound=0 AND friend_id=? AND frags_id=?);");
   bind_Int_Int64_Int64_Int_Int64(stmtInsertFragmentedDataInbound, friend_number, id, sz, friend_number, id);
   execPrepared(stmtInsertFragmentedDataInbound);
 
@@ -150,11 +151,11 @@ FUNC_LOCAL void dbInsertInboundFragment(void *tox_opaque,
     "INSERT INTO fragmented_meta (outbound, friend_id, type, frags_id, timestamp_first, timestamp_last,"
                                 " frags_done, frags_num)"
     " SELECT 0, ?, ?, ?, ?, ?, 0, ?"
-    " WHERE NOT EXISTS (SELECT 1 FROM fragmented_meta WHERE friend_id=? AND frags_id=?);");
+    " WHERE NOT EXISTS (SELECT 1 FROM fragmented_meta WHERE outbound=0 AND friend_id=? AND frags_id=?);");
   bind_Int_Int_Int64_Int64_Int64_Int_Int_Int64(stmtInsertFragmentedMetaInbound, friend_number, type, id, tm, tm, numParts, friend_number, id);
   execPrepared(stmtInsertFragmentedMetaInbound);
 
-  uint64_t rowid = getFragmentsDataRowid(friend_number, id);
+  uint64_t rowid = getFragmentsDataRowid(/*outbound*/0, friend_number, id);
   if (!rowid) {
     dbUnlock(lock);
     return; // record is ready, must be a late duplicate
@@ -188,11 +189,11 @@ FUNC_LOCAL void dbInsertInboundFragment(void *tox_opaque,
 #if !defined(USE_BLOB_CACHE)
   closeBlob(blob);
 #endif
-  updateFragmentedMetaDone(tm, friend_number, id);
+  updateFragmentedMetaDone(/*outbound=*/0, tm, friend_number, id);
   // see if the message is ready
   prepare(&stmtSelectFragmentedInboundDone,
     "SELECT timestamp_first, timestamp_last, friend_id, message, length(message)"
-    " FROM fragmented_meta JOIN fragmented_data USING (friend_id, frags_id)"
+    " FROM fragmented_meta JOIN fragmented_data USING (outbound, friend_id, frags_id)"
     " WHERE outbound=0 AND friend_id=? AND frags_id=? AND frags_done = frags_num;");
   bind_Int_Int64(stmtSelectFragmentedInboundDone, friend_number, id);
   if (execPreparedRowOrNot(stmtSelectFragmentedInboundDone)) {
@@ -216,7 +217,7 @@ FUNC_LOCAL void dbInsertInboundFragment(void *tox_opaque,
     resetStmt(stmtSelectFragmentedInboundDone);
     LOG("dbInsertInboundFragment: done resetStmt")
     // delete the data record, only leave the meta record in order to ignore further duplicates
-    deleteDataRecord(friend_number, id);
+    deleteDataRecord(/*outbound=*/0, friend_number, id);
     LOG("dbInsertInboundFragment: done deleteDataRecord")
   } else {
     resetStmt(stmtSelectFragmentedInboundDone);
@@ -238,8 +239,8 @@ FUNC_LOCAL void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64
   execPrepared(stmtInsertFragmentedMetaOutbound);
 
   prepare(&stmtInsertFragmentedDataOutbound,
-    "INSERT INTO fragmented_data (friend_id, frags_id, message, confirmed, receipt)"
-    " VALUES(?, ?, ?, zeroblob(?), ?);");
+    "INSERT INTO fragmented_data (outbound, friend_id, frags_id, message, confirmed, receipt)"
+    " VALUES(1, ?, ?, ?, zeroblob(?), ?);");
   bind_Int_Int64_Blob_Int_Int(stmtInsertFragmentedDataOutbound, friend_number, id, data, length, numParts, receipt);
   execPrepared(stmtInsertFragmentedDataOutbound);
   dbUnlock(lock);
@@ -247,14 +248,14 @@ FUNC_LOCAL void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64
 
 FUNC_LOCAL void dbOutboundPartConfirmed(uint32_t friend_number, uint64_t id, unsigned partNo, uint64_t tm) {
   void *lock = dbLock();
-  uint64_t rowid = getFragmentsDataRowid(friend_number, id);
+  uint64_t rowid = getFragmentsDataRowid(/*outbound*/1, friend_number, id);
   if (!rowid)
     abort();
   uint8_t one = 1;
   sqlite3_blob *confirmedBlob = openBlob("fragmented_data", "confirmed", rowid);
   writeBlob(confirmedBlob, &one, 1, partNo-1);
   closeBlob(confirmedBlob);
-  updateFragmentedMetaDone(tm, friend_number, id);
+  updateFragmentedMetaDone(/*outbound=*/1, tm, friend_number, id);
   dbUnlock(lock);
 }
 
@@ -267,7 +268,7 @@ FUNC_LOCAL void dbLoadPendingSentMessages(DbMsgPendingSentCb msgPendingSentCb) {
           " message, length(message),"
           " confirmed, length(confirmed),"
           " receipt"
-    " FROM fragmented_meta JOIN fragmented_data USING (friend_id, frags_id)"
+    " FROM fragmented_meta JOIN fragmented_data USING (outbound, friend_id, frags_id)"
     " WHERE outbound=1;");
   while (execPreparedRowOrNot(stmtSelectFragmentedOutboundPending)) {
     msgPendingSentCb(
@@ -289,9 +290,9 @@ FUNC_LOCAL void dbLoadPendingSentMessages(DbMsgPendingSentCb msgPendingSentCb) {
   dbUnlock(lock);
 }
 
-FUNC_LOCAL void dbClearPending(uint32_t friend_number, uint64_t id) {
+FUNC_LOCAL void dbClearOutboundPending(uint32_t friend_number, uint64_t id) {
   void *lock = dbLock();
-  deleteDataRecord(friend_number, id);
+  deleteDataRecord(/*outbound=*/1, friend_number, id);
   dbUnlock(lock);
 }
 
@@ -332,18 +333,19 @@ static void createSchema() {
     " frags_id INTEGER NOT NULL,"
     " timestamp_first INTEGER NOT NULL, timestamp_last INTEGER NOT NULL,"
     " frags_done INTEGER NOT NULL, frags_num INTEGER NOT NULL,"
-    " PRIMARY KEY(friend_id, frags_id)); "
+    " PRIMARY KEY(outbound, friend_id, frags_id)); "
     "CREATE TABLE IF NOT EXISTS fragmented_data ("
+    " outbound INTEGER NOT NULL,"
     " friend_id INTEGER NOT NULL,"
     " frags_id INTEGER NOT NULL,"
     " message BLOB NULL,"
     " confirmed BLOB NULL,"
     " receipt INTEGER NULL,"
 #if !defined(USE_SQLITE_WORKAROUND)
-    " PRIMARY KEY(friend_id, frags_id));"
+    " PRIMARY KEY(outbound, friend_id, frags_id));"
 #else
     " id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    " UNIQUE(friend_id, frags_id));"
+    " UNIQUE(outbound, friend_id, frags_id));"
     "INSERT INTO sqlite_sequence VALUES('fragmented_data', 1000000000);"
 #endif
   );
@@ -357,10 +359,10 @@ static void readDbName(char *name) {
   sqlite3_finalize(stmt);
 }
 
-static uint64_t getFragmentsDataRowid(uint32_t friend_number, uint64_t id) {
+static uint64_t getFragmentsDataRowid(int outbound, uint32_t friend_number, uint64_t id) {
   prepare(&stmtSelectRowidFromFragmentedMeta,
-    "SELECT rowid FROM fragmented_data WHERE friend_id=? AND frags_id=?;");
-  bind_Int_Int64(stmtSelectRowidFromFragmentedMeta, friend_number, id);
+    "SELECT rowid FROM fragmented_data WHERE outbound=? AND friend_id=? AND frags_id=?;");
+  bind_Int_Int_Int64(stmtSelectRowidFromFragmentedMeta, outbound, friend_number, id);
   int64_t rowid = 0;
   if (execPreparedInt64(stmtSelectRowidFromFragmentedMeta, 0, &rowid))
     return rowid;
@@ -368,19 +370,21 @@ static uint64_t getFragmentsDataRowid(uint32_t friend_number, uint64_t id) {
     return 0;
 }
 
-static void updateFragmentedMetaDone(uint64_t tm, uint32_t friend_number, uint64_t id) {
+static void updateFragmentedMetaDone(int outbound, uint64_t tm, uint32_t friend_number, uint64_t id) {
   prepare(&stmtUpdateFragmentedMeta,
     "UPDATE fragmented_meta SET timestamp_last=max(timestamp_last,?), frags_done = frags_done+1"
-    " WHERE friend_id=? AND frags_id=?;");
-  bind_Int64_Int_Int64(stmtUpdateFragmentedMeta, tm, friend_number, id);
+    " WHERE outbound=? AND friend_id=? AND frags_id=?;");
+  bind_Int_Int64_Int_Int64(stmtUpdateFragmentedMeta, tm, outbound, friend_number, id);
   execPrepared(stmtUpdateFragmentedMeta);
+  if (sqlite3_changes(db) != 1)
+    ERROR("Expected 1 row in fragmented_meta to be updated, but actual update count=%d", sqlite3_changes(db))
 }
 
-static void deleteDataRecord(uint32_t friend_number, uint64_t id) {
-  LOG("deleteDataRecord: friend_number=%u id=%"PRIu64"", friend_number, id)
+static void deleteDataRecord(int outbound, uint32_t friend_number, uint64_t id) {
+  LOG("deleteDataRecord: outbound=%u friend_number=%u id=%"PRIu64"", outbound, friend_number, id)
   prepare(&stmtDeleteFragmentedData,
-    "DELETE FROM fragmented_data WHERE friend_id=? AND frags_id=?;");
-  bind_Int_Int64(stmtDeleteFragmentedData, friend_number, id);
+    "DELETE FROM fragmented_data WHERE outbound=? AND friend_id=? AND frags_id=?;");
+  bind_Int_Int_Int64(stmtDeleteFragmentedData, outbound, friend_number, id);
   execPrepared(stmtDeleteFragmentedData);
 }
 
@@ -441,10 +445,17 @@ static void bind_Int_Int64(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2) {
   bindInt64(stmt, 2, a2);
 }
 
-static void bind_Int64_Int_Int64(sqlite3_stmt *stmt, sqlite3_int64 a1, int a2, sqlite3_int64 a3) {
-  bindInt64(stmt, 1, a1);
+static void bind_Int_Int_Int64(sqlite3_stmt *stmt, int a1, int a2, sqlite3_int64 a3) {
+  bindInt  (stmt, 1, a1);
   bindInt  (stmt, 2, a2);
   bindInt64(stmt, 3, a3);
+}
+
+static void bind_Int_Int64_Int_Int64(sqlite3_stmt *stmt, int a1, sqlite3_int64 a2, int a3, sqlite3_int64 a4) {
+  bindInt  (stmt, 1, a1);
+  bindInt64(stmt, 2, a2);
+  bindInt  (stmt, 3, a3);
+  bindInt64(stmt, 4, a4);
 }
 
 static void bind_Int_Int64_Blob_Int_Int(sqlite3_stmt *stmt,
@@ -582,6 +593,7 @@ static void closeBlob(sqlite3_blob *blob) {
   int rc;
   if (CK_ERROR(sqlite3_blob_close(blob)))
     err(rc, "closing blob");
+  LOG("closed blob")
 }
 
 #if defined(USE_BLOB_CACHE)

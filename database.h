@@ -38,5 +38,5 @@ void dbInsertOutboundMessage(uint32_t friend_number, int type, uint64_t id,
                              uint32_t receipt);
 void dbOutboundPartConfirmed(uint32_t friend_number, uint64_t id, unsigned partNo, uint64_t tm);
 void dbLoadPendingSentMessages(DbMsgPendingSentCb msgPendingSentCb);
-void dbClearPending(uint32_t friend_number, uint64_t id);
+void dbClearOutboundPending(uint32_t friend_number, uint64_t id);
 void dbPeriodic();

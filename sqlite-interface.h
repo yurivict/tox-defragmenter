@@ -36,7 +36,7 @@ const void *sqlite3_column_blob(sqlite3_stmt*, int iCol);
 const unsigned char *sqlite3_column_text(sqlite3_stmt*, int iCol);
 int sqlite3_step(sqlite3_stmt*);
 int sqlite3_reset(sqlite3_stmt *pStmt);
-
+int sqlite3_changes(sqlite3*);
 int sqlite3_finalize(sqlite3_stmt *pStmt);
 
 int sqlite3_exec(

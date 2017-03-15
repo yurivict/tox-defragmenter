@@ -357,7 +357,7 @@ static void msgIsComplete(Tox *tox, msg_outbound *msg, void *user_data) {
   LOG("SEND", "msg=%p id="FID" msg.numParts=%u, sending receipt %x to the client",
     msg, msg->id, msg->numParts, msg->receipt)
   CLIENT(friend_read_receipt_cb)(tox, msg->friend_number, msg->receipt, user_data);
-  dbClearPending(msg->friend_number, msg->id);
+  dbClearOutboundPending(msg->friend_number, msg->id);
   msgsOutboundUnlink(msg);
   msgOutboundDelete(msg);
 }
@@ -523,7 +523,7 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
     WARNING("mismatching number of parts of the pending outbound message for friend=%d msg=%p id="FID
             ": expected %u, got %u parts and %u confirmations, discarding the message\n",
       friend_number, msg, id, msg->numParts, numParts, lengthConfirmed)
-    dbClearPending(friend_number, id);
+    dbClearOutboundPending(friend_number, id);
     msgOutboundDelete(msg);
     return;
   }
@@ -538,7 +538,7 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
   if (numConfirmed != msg->numConfirmed || numConfirmed > numParts) {
     WARNING("mismatched or invalid confirmed count for friend=%d msg=%p id="FID": %u vs. %u, discarding the message\n",
       friend_number, msg, id, numConfirmed, msg->numConfirmed)
-    dbClearPending(friend_number, id);
+    dbClearOutboundPending(friend_number, id);
     msgOutboundDelete(msg);
     return;
   }
@@ -549,7 +549,7 @@ static void loadPendingSentMessage(uint32_t friend_number, int type, uint64_t id
   } else {
     WARNING("all %u message parts are confirmed for friend=%u msg=%p id="FID", discarding the message\n",
       numParts, friend_number, msg, id)
-    dbClearPending(friend_number, id);
+    dbClearOutboundPending(friend_number, id);
     msgOutboundDelete(msg);
   }
 }
