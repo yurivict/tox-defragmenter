@@ -98,7 +98,7 @@ static unsigned receiptsLo = 0;
 static unsigned receiptsHi = 0;
 static unsigned receiptsNum = 0;
 static unsigned receiptsAlloc = 0;
-static uint32_t ourLastReceipt = 0;
+static uint32_t lastReceipt = 0;
 
 //
 // declarations
@@ -179,7 +179,7 @@ static uint64_t generateMsgId() {
 }
 
 static uint32_t generateReceiptNo() {
-  ourLastReceipt = ourLastReceipt+1 <= params.receiptRangeHi ? ourLastReceipt+1 : params.receiptRangeLo;
+  lastReceipt = lastReceipt+1 <= params.receiptRangeHi ? lastReceipt+1 : params.receiptRangeLo;
   // avoid possible conflict with receipts of the pending packets loaded from db
   if (msgsOutbound) {
     int changed;
@@ -187,8 +187,8 @@ static uint32_t generateReceiptNo() {
       changed = 0;
       msg_outbound *m = msgsOutbound;
       do {
-        if (m->receipt == ourLastReceipt) {
-          ourLastReceipt = ourLastReceipt+1 <= params.receiptRangeHi ? ourLastReceipt+1 : params.receiptRangeLo;
+        if (m->receipt == lastReceipt) {
+          lastReceipt = lastReceipt+1 <= params.receiptRangeHi ? lastReceipt+1 : params.receiptRangeLo;
           changed = 1;
           break;
         }
@@ -196,7 +196,7 @@ static uint32_t generateReceiptNo() {
       } while (m != msgsOutbound);
     } while (changed);
   }
-  return ourLastReceipt;
+  return lastReceipt;
 }
 
 static void initialize() {
@@ -216,7 +216,7 @@ static void receiptsInitialize() {
   receiptsNum = 0;
   receiptsAlloc = 32;
   receipts = NEWA(receipt_record, receiptsAlloc);
-  ourLastReceipt = params.receiptRangeLo;
+  lastReceipt = params.receiptRangeLo;
 }
 
 static void receiptsUninitialize() {
