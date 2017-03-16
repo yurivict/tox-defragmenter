@@ -717,7 +717,7 @@ void MY(periodic)(Tox *tox) {
   dbPeriodic();
 }
 
-int MY(is_receipt_pending)(Tox *tox, uint32_t receipt) {
+int MY(is_receipt_pending)(uint32_t receipt) {
   msg_outbound *msg = msgsOutbound;
   if (msg)
     do {
