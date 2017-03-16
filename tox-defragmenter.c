@@ -581,7 +581,7 @@ static int tryProcessReceipt(Tox *tox, uint32_t receipt, void *user_data) {
              " partNo=%u timeout="FTM" msg.numTransit=%u msg.numConfirmed=%u msg.numParts=%u",
       receipt, msg, msg->id, msg->friend_number,
       r->partNo, r->timestamp, msg->numTransit, msg->numConfirmed, msg->numParts)
-  if (r->msg->numConfirmed < r->msg->numParts)
+  if (msg->numConfirmed < msg->numParts)
     if (isFriendOnline(tox, msg->friend_number)) {
       msgSendNextParts(tox, msg);
     } else {
@@ -590,7 +590,7 @@ static int tryProcessReceipt(Tox *tox, uint32_t receipt, void *user_data) {
         msg, msg->id, msg->numParts, msg->friend_number)
     }
   else
-    msgIsComplete(tox, r->msg, user_data);
+    msgIsComplete(tox, msg, user_data);
   // clear the receipt
   receipts[recIdx].receipt = 0;
   if (recIdx == receiptsLo) {
