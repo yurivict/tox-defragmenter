@@ -1,5 +1,9 @@
 #!/bin/sh
 
+#
+# Copyright © 2017 by Yuri Victorovich. All rights reserved.
+#
+
 echo "Starting tests (`date`)"
 
 ## params

@@ -1,3 +1,6 @@
+//
+// Copyright © 2017 by Yuri Victorovich. All rights reserved.
+//
 
 #include "common.h"
 #include "util.h"
