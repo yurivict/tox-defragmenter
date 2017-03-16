@@ -17,7 +17,7 @@ For clients that don't use SQLite or sqlcipher tox-defragmenter can create in-me
 * Expects the caller to depend on SQLite or sqlcipher.
 
 # Build
-Run 'make' command.
+Run 'make TOX_HEADERS=/path/to/tox/headers' command.
 
 # Tests
 In order to run tests please run the command 'make run-regression-tests'.
