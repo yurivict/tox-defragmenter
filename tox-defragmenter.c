@@ -89,6 +89,9 @@ typedef struct receipt_record {
   uint64_t      timestamp;
 } receipt_record;
 
+//
+// static data
+//
 static msg_outbound *msgsOutbound = NULL;
 static receipt_record *receipts = 0;
 static unsigned receiptsLo = 0;
