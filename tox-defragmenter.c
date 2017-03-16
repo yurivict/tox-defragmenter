@@ -568,7 +568,7 @@ static void MY(friend_read_receipt_cb)(Tox *tox, uint32_t friend_number, uint32_
 static int tryProcessReceipt(Tox *tox, uint32_t receipt, void *user_data) {
   int recIdx = findReceipt(receipt);
   if (recIdx == -1 || receipts[recIdx].receipt != receipt)
-    return 0;
+    return (params.receiptRangeLo <= receipt && receipt <= params.receiptRangeHi); // in range -> must be a duplicate receipt
   receipt_record *r = &receipts[recIdx];
   msg_outbound *msg = r->msg;
   fragment *f = &msg->fragments[r->partNo-1];
