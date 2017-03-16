@@ -97,7 +97,9 @@ static unsigned receiptsNum = 0;
 static unsigned receiptsAlloc = 0;
 static uint32_t ourLastReceipt = 0;
 
+//
 // declarations
+//
 static void* memRealloc(void *mem, unsigned szOld, unsigned szNew);
 static uint64_t getCurrTimeMs();
 static uint32_t generateReceiptNo();
