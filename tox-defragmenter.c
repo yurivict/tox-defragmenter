@@ -12,7 +12,9 @@
 #include <sys/time.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <limits.h>
+#include <pthread.h>
 
 #define LOG(op, fmt...) //utilLog(__FUNCTION__, "Main." op, fmt);
 
@@ -154,6 +156,7 @@ static void messageReady(void *tox_opaque,
                          uint32_t friend_number, int type, const uint8_t *message, size_t length, void *user_data);
 static void processInFragment(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
                               size_t length, void *user_data);
+static void doPeriodic(Tox *tox);
 
 //
 // utils
@@ -238,6 +241,38 @@ static void MY(callback_friend_read_receipt)(Tox *tox, tox_friend_read_receipt_c
 static void MY(callback_friend_message)(Tox *tox, tox_friend_message_cb *callback) {
   CLIENT(friend_message_cb) = callback;
   TOX(callback_friend_message)(tox, MY(friend_message_cb));
+}
+
+//
+// thread
+//
+
+static pthread_t thread;
+static int threadStopFlag = 0;
+
+static void* threadRoutine(void *arg) {
+  while (!threadStopFlag) {
+    sleep(2);
+    if (toxInstance)
+      doPeriodic(toxInstance);
+  }
+  return NULL;
+}
+
+static __attribute__((constructor)) void threadInit(void) {
+  LOG("starting thread")
+  int res;
+  if ((res = pthread_create(&thread, 0/*attr*/, &threadRoutine, 0/*arg*/)))
+    ERROR("Failed to start the thread, error=%d", res)
+}
+
+static __attribute__((destructor)) void threadFini(void) {
+  LOG("stopping thread")
+  void *v;
+  threadStopFlag = 1;
+  int res;
+  if ((res = pthread_join(thread, &v)))
+    ERROR("Failed to stop the thread, error=%d", res)
 }
 
 //
@@ -674,6 +709,23 @@ static void processInFragment(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE
 }
 
 //
+// periodic
+//
+
+void doPeriodic(Tox *tox) {
+  //LOG("PERIODIC", "tm="FTM" initializedApi=%d initializedDb=%d", getCurrTimeMs(), initializedApi, initializedDb)
+  if (!initializedApi || !initializedDb)
+    return;
+  // send
+  //compressReceipts();
+  resendExpiredReceipts(tox);
+  sendMore(tox);
+  // db
+  dbPeriodic();
+}
+
+
+//
 // Our API
 //
 
@@ -722,18 +774,6 @@ void MY(uninitialize)() {
   initializedApi = 0;
   initializedDb = 0;
   base_toxcore_api = (ToxcoreApi){0};
-}
-
-void MY(periodic)(Tox *tox) {
-  //LOG("PERIODIC", "tm="FTM" initializedApi=%d initializedDb=%d", getCurrTimeMs(), initializedApi, initializedDb)
-  if (!initializedApi || !initializedDb)
-    return;
-  // send
-  //compressReceipts();
-  resendExpiredReceipts(tox);
-  sendMore(tox);
-  // db
-  dbPeriodic();
 }
 
 int MY(is_receipt_pending)(uint32_t receipt) {
