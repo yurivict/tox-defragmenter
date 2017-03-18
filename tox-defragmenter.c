@@ -16,6 +16,7 @@
 
 #define LOG(op, fmt...) //utilLog(__FUNCTION__, "Main." op, fmt);
 
+static Tox *toxInstance = NULL;
 static uint8_t initializedApi = 0;
 static uint8_t initializedDb = 0;
 static ToxcoreApi base_toxcore_api;
@@ -117,6 +118,8 @@ static void msgsOutboundUnlink(msg_outbound *msg);
 static void msgOutboundDelete(msg_outbound *msg);
 static void msgsOutboundDeleteAll();
 static int isFriendOnline(Tox *tox, uint32_t friend_number);
+static Tox* MY(new)(const struct Tox_Options *options, TOX_ERR_NEW *error);
+static void MY(kill)(Tox *tox);
 static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
                                         size_t length, TOX_ERR_FRIEND_SEND_MESSAGE *error);
 static uint32_t MY(friend_send_message_long)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
@@ -281,6 +284,20 @@ static void msgsOutboundDeleteAll() {
 
 static int isFriendOnline(Tox *tox, uint32_t friend_number) {
   return TOX(friend_get_connection_status)(tox, friend_number, NULL) != TOX_CONNECTION_NONE;
+}
+
+static Tox* MY(new)(const struct Tox_Options *options, TOX_ERR_NEW *error) {
+  if (toxInstance)
+    ERROR("Multiple Tox instances aren't yet suported.")
+  toxInstance = MY(new)(options, error);
+  return toxInstance;
+}
+
+static void MY(kill)(Tox *tox) {
+  if (toxInstance != tox)
+    ERROR("Tox instance mismatch.")
+  MY(kill)(tox);
+  toxInstance = NULL;
 }
 
 static uint32_t MY(friend_send_message)(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
@@ -668,6 +685,8 @@ ToxcoreApi MY(initialize_api)(const ToxcoreApi *api) {
   base_toxcore_api = *api;
   // overload API
   MY(toxcore_api) = *api;
+  MY(toxcore_api).tox_new = MY(new);
+  MY(toxcore_api).tox_kill = MY(kill);
   MY(toxcore_api).tox_friend_send_message = MY(friend_send_message);
   MY(toxcore_api).tox_callback_friend_read_receipt = MY(callback_friend_read_receipt);
   MY(toxcore_api).tox_callback_friend_message = MY(callback_friend_message);
